@@ -1,0 +1,16 @@
+localProxyActive: false
+
+servers:
+  testHelmChart_Nginx:
+    type: helmChart
+    startupTimeoutSec: 50
+    source:
+      - bitnami/nginx
+    helmChartOptions:
+      debug: true
+      nameSpace: buildslaves
+      podName: test-tiger-nginx
+      logPods:
+        - test-tiger-nginx.*
+      exposedPorts:
+        - test-tiger-nginx.*,8080:80

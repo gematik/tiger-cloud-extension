@@ -1,0 +1,13 @@
+localProxyActive: false
+
+servers:
+  testHelmChart:
+    type: helmChart
+    startupTimeoutSec: 80
+    source:
+      - ./hello-world-not-existing
+    helmChartOptions:
+      debug: false
+      nameSpace: buildslaves
+      podName: test-helm-chart-not-existing
+      workingDir: 'src/test/resources/helmCharts'

@@ -1,0 +1,9 @@
+localProxyActive: false
+
+servers:
+  testDockerMVPNonExistingVersion:
+    startupTimeoutSec: 1
+    source:
+      - gematik1/tiger-test-image
+    type: docker
+    version: 200.200.200

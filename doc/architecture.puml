@@ -1,0 +1,30 @@
+@startuml
+'https://plantuml.com/component-diagram
+
+package "Tiger" #aaffaa {
+  [TigerTestenvMgr] as ttem
+  [HelmChartServer] as hcs
+  [KubeUtils] as ku
+}
+
+cloud "Remote" #aaaaff {
+  [remote cluster] as rc
+}
+
+package "local" #ffaaaa {
+  [Kubectl] as kubectl
+  [helm client] as helm
+  [docker Kubernetes] as docker
+  [microk8s] as m8
+}
+
+ttem -> hcs : instantiates
+hcs --> ku : uses
+hcs -> hcs : loads helm chart files
+ku --> kubectl : sets context,\nchecks pods status
+ku --> helm : (un-)installs chart
+
+kubectl --> docker : accesses\nvia local context
+kubectl --> m8 : accesses\nvia local context
+kubectl --> rc : accesses\nvia remote context
+@enduml

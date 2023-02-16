@@ -1,0 +1,14 @@
+localProxyActive: false
+
+servers:
+  tigerNginxWrongExposedPort5:
+    type: helmChart
+    startupTimeoutSec: 50
+    source:
+      - bitnami/nginx
+    helmChartOptions:
+      debug: true
+      nameSpace: buildslaves
+      podName: tiger-nginx-wrong-exposed-port5
+      exposedPorts:
+        - tiger-nginx-wrong-exposed-port5.*,0:0

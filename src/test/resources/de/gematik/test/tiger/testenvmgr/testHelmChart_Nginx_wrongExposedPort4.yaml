@@ -1,0 +1,15 @@
+localProxyActive: false
+
+servers:
+  tigerNginxWrongExposedPort4:
+    type: helmChart
+    startupTimeoutSec: 50
+    source:
+      - bitnami/nginx
+    helmChartOptions:
+      debug: true
+      nameSpace: buildslaves
+      podName:
+        tiger-nginx-wrong-exposed-port4
+      exposedPorts:
+        - tiger-nginx-wrong-exposed-port4.*,20080:90,8080:200090

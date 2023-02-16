@@ -1,0 +1,11 @@
+localProxyActive: false
+
+servers:
+  testHelmChart:
+    type: helmChart
+    source:
+      - ./hello-world
+      - still/not/there
+    helmChartOptions:
+      debug: true
+      nameSpace: buildslaves

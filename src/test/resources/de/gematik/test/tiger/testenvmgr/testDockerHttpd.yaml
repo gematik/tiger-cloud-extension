@@ -1,0 +1,15 @@
+localProxyActive: true
+
+servers:
+  testDockerHttpd:
+    startupTimeoutSec: 20
+    hostname: testDockerHttpd
+    source:
+      - docker.io/httpd
+    version: 2.4.49-alpine
+    type: docker
+    environment:
+      - ENV_FOR_DOCKER=1234567890
+    exports:
+      - EXTERNAL_HTTP_PORT=${PORT:80}
+      - EXTERNAL_HOSTNAME=${NAME}

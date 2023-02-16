@@ -1,0 +1,16 @@
+localProxyActive: false
+
+servers:
+  tigerNginxWrongNamespace:
+    type: helmChart
+    startupTimeoutSec: 50
+    source:
+      - bitnami/nginx
+    helmChartOptions:
+      debug: true
+      nameSpace: blub
+      podName: tiger-nginx-wrong-namespace
+      logPods:
+        - tiger-nginx-wrong-namespace.*
+      exposedPorts:
+        - tiger-nginx-wrong-namespace.*,8080:90

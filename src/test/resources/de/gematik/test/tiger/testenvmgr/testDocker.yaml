@@ -1,0 +1,9 @@
+localProxyActive: false
+
+servers:
+  testDocker:
+    hostname: testDocker1
+    type: docker
+    source:
+      - gematik1/tiger-test-image
+    version: 1.1.0

@@ -1,0 +1,42 @@
+localProxyActive: false
+
+lib:
+  activateWorkflowUi: true
+
+servers:
+  testHelmChart:
+    type: helmChart
+    startupTimeoutSec: 240
+    source:
+      - ./helm
+    helmChartOptions:
+      debug: true
+      nameSpace: buildslaves
+      exposedPorts:
+        - idp-.*,9999:8080,10000:8080
+      podName: test-helm-chart-genua-zt
+      workingDir: '../gematik-poc-v1'
+      logPods:
+        - fem-.*
+        - gms-.*
+        - fachdienst-.*
+        - redis-.*
+        - pdp-.*
+        - pep-.*
+        - pip-.*
+        - mon-grafana-.*
+        - mon-loki-.*
+        - idp-.*
+        - pap-.*
+      healthcheckPods:
+        - fem-.*
+        - gms-.*
+        - fachdienst-.*
+        - redis-.*
+        - pdp-.*
+        - pep-.*
+        - pip-.*
+        - mon-grafana-.*
+        - mon-loki-.*
+        - idp-.*
+        - pap-.*

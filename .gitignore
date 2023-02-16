@@ -1,0 +1,9 @@
+.idea/
+target/
+*.iml
+GitHub-Release.Jenkinsfile
+Internal-Release.Jenkinsfile
+Jenkinsfile
+Maven-Central-Release.Jenkinsfile
+Release.Jenkinsfile
+Dependabot.Jenkinsfile
