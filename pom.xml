@@ -6,7 +6,7 @@
 
     <groupId>de.gematik</groupId>
     <artifactId>tiger-cloud-extension</artifactId>
-    <version>1.0.2</version>
+    <version>1.0.3</version>
     <packaging>jar</packaging>
     <description>tiger-cloud-extension</description>
     <url>https://github.com/gematik/tiger-cloud-extension</url>
@@ -58,7 +58,7 @@
         <maven.compiler.source>11</maven.compiler.source>
         <maven.compiler.target>11</maven.compiler.target>
         <version.java>11</version.java>
-        <version.tiger.testenv>1.2.1</version.tiger.testenv>
+        <version.tiger.testenv>1.3.0</version.tiger.testenv>
         <version.junit5>5.9.2</version.junit5>
         <version.jackson>2.14.2</version.jackson>
         <version.spring-boot>2.7.5</version.spring-boot>
