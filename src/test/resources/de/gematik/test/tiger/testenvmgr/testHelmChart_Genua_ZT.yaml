@@ -11,7 +11,7 @@ servers:
       - ./helm
     helmChartOptions:
       debug: true
-      nameSpace: buildslaves
+      nameSpace: tiger
       exposedPorts:
         - idp-.*,9999:8080,10000:8080
       podName: test-helm-chart-genua-zt

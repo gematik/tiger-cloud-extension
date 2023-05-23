@@ -9,7 +9,7 @@ servers:
     version: 1.0.4-sichaned
     helmChartOptions:
       debug: true
-      nameSpace: buildslaves
+      nameSpace: tiger
       podName: test-tiger-nxing-wrong-version
       exposedPorts:
         - test-tiger-nxing-wrong-version.*,8080:8090

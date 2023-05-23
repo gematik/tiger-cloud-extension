@@ -7,5 +7,5 @@ servers:
       - ./hello-world
     helmChartOptions:
       debug: true
-      nameSpace: buildslaves
+      nameSpace: tiger
       podName:

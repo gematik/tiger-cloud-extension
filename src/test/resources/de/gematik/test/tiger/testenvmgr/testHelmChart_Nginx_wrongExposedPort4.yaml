@@ -8,7 +8,7 @@ servers:
       - bitnami/nginx
     helmChartOptions:
       debug: true
-      nameSpace: buildslaves
+      nameSpace: tiger
       podName:
         tiger-nginx-wrong-exposed-port4
       exposedPorts:

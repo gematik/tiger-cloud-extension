@@ -43,7 +43,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 /**
  * Tests the helm chart feature.
  * To be able to run these tests you need to have a working kubernetes / helm installation (microk8s on Ubuntu is our default set up).
- * All tests are run in the buildslaves namespace, so amke sure to have this namesapce created on your kubernetes cluster.
+ * All tests are run in the tiger namespace, so amke sure to have this namesapce created on your kubernetes cluster.
  * The following external resources are used, so make sure your helm installation has access to the bitnami repo:
  * <ul>
  *     <li>bitnami/nginx</li>
@@ -215,11 +215,11 @@ class TestHelmChartServerIT extends AbstractTigerCloudTest {
         + "      - bitnami/nginx\n"
         + "    helmChartOptions: \n"
         + "      debug: true\n"
-        + "      nameSpace: buildslaves\n"
+        + "      nameSpace: tiger\n"
         + "      podName: tiger-nginx-liveness\n"
         + "      logPods:\n"
         + "        - tiger-nginx-liveness.*\n"
-        + "      namespace: buildslaves\n"
+        + "      namespace: tiger\n"
         + "      exposedPorts:\n"
         + "        - tiger-nginx-liveness.*, 8080:80 , 8081:80 ")
     void testSetUpEnvironment_CheckLiveness_OK(TigerTestEnvMgr tigerTestEnvMgr) {

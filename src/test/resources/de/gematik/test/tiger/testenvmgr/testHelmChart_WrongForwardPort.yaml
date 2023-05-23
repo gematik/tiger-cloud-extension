@@ -8,7 +8,7 @@ servers:
       - bitnami/nginx
     helmChartOptions:
       debug: true
-      nameSpace: buildslaves
+      nameSpace: tiger
       podName: test-tiger-wrong-forward-port
       exposedPorts:
         - test-tiger-wrong-forward-port.*,8080:6666

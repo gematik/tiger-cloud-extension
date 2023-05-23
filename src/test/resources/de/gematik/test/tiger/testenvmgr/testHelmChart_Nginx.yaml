@@ -8,7 +8,7 @@ servers:
       - bitnami/nginx
     helmChartOptions:
       debug: true
-      nameSpace: buildslaves
+      nameSpace: tiger
       podName: test-tiger-nginx
       logPods:
         - test-tiger-nginx.*

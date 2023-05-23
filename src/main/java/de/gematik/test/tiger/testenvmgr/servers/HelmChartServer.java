@@ -16,13 +16,15 @@
 
 package de.gematik.test.tiger.testenvmgr.servers;
 
-import static org.awaitility.Awaitility.await;
 import de.gematik.test.tiger.common.data.config.CfgHelmChartOptions;
 import de.gematik.test.tiger.testenvmgr.TigerTestEnvMgr;
 import de.gematik.test.tiger.testenvmgr.config.CfgServer;
 import de.gematik.test.tiger.testenvmgr.env.TigerServerStatusUpdate;
 import de.gematik.test.tiger.testenvmgr.servers.log.TigerStreamLogFeeder;
 import de.gematik.test.tiger.testenvmgr.util.TigerTestEnvException;
+import org.awaitility.core.ConditionTimeoutException;
+import org.slf4j.event.Level;
+
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -31,8 +33,8 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-import org.awaitility.core.ConditionTimeoutException;
-import org.slf4j.event.Level;
+
+import static org.awaitility.Awaitility.await;
 
 /**
  * Implementation of the Tiger test environment server type "helmChart".
@@ -192,7 +194,7 @@ public class HelmChartServer extends AbstractExternalTigerServer {
     }
 
     @Override
-    Optional<String> getHealthcheckUrl() {
+    public Optional<String> getHealthcheckUrl() {
         if (getHelmChartOptions().getContext() != null) {
             return Optional.of("kubernetes cluster context '" + getHelmChartOptions().getContext() + "'");
         } else {

@@ -8,4 +8,4 @@ servers:
       - still/not/there
     helmChartOptions:
       debug: true
-      nameSpace: buildslaves
+      nameSpace: tiger

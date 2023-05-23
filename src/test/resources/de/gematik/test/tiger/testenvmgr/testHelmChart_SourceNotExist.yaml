@@ -8,6 +8,6 @@ servers:
       - ./hello-world-not-existing
     helmChartOptions:
       debug: false
-      nameSpace: buildslaves
+      nameSpace: tiger
       podName: test-helm-chart-not-existing
       workingDir: 'src/test/resources/helmCharts'

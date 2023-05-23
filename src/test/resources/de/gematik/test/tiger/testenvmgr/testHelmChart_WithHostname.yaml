@@ -9,6 +9,6 @@ servers:
       - ./hello-world
     helmChartOptions:
       debug: true
-      nameSpace: buildslaves
+      nameSpace: tiger
       podName: test-helm-chart
       workingDir: 'src/test/resources/helmCharts'
