@@ -9,8 +9,15 @@ To use this extension in your project you at least have to depend upon the tiger
     <dependency>
         <groupId>de.gematik.test</groupId>
         <artifactId>tiger-testenv-mgr</artifactId>
-        <version>${version.tiger.testenv}</version>
+        <version>${tiger.testenv.version}</version>
     </dependency>
 ```
 
 For more details please check the Tiger user manual at https://gematik.github.io/app-Tiger/Tiger-User-Manual.html
+
+## Local Testenvironment
+
+You will need microk8s configured correctly to run local tests:
+
+* kubectl create namespace tiger
+* microk8s config > ~/.kube/config

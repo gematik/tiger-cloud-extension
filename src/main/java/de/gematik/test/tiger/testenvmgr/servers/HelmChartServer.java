@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 gematik GmbH
+ * Copyright (c) 2024 gematik GmbH
  * 
  * Licensed under the Apache License, Version 2.0 (the License);
  * you may not use this file except in compliance with the License.
@@ -32,7 +32,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 import static org.awaitility.Awaitility.await;
 
@@ -59,6 +58,7 @@ public class HelmChartServer extends AbstractExternalTigerServer {
         this.kubeUtils = new KubeUtils(this, tigerTestEnvMgr.getExecutor());
     }
 
+    @Override
     public void assertThatConfigurationIsCorrect() {
         super.assertThatConfigurationIsCorrect();
 
@@ -86,10 +86,8 @@ public class HelmChartServer extends AbstractExternalTigerServer {
             log.warn("Working folder not specified, defaulting to current working directory {}", options.getWorkingDir());
         }
         File f = new File(options.getWorkingDir());
-        if (!f.exists()) {
-            if (!f.mkdirs()) {
-                throw new TigerTestEnvException("Unable to create working dir folder " + f.getAbsolutePath());
-            }
+        if (!f.exists() && !f.mkdirs()) {
+            throw new TigerTestEnvException("Unable to create working dir folder " + f.getAbsolutePath());
         }
         kubeUtils.setWorkingDirectory(getHelmChartOptions().getWorkingDir());
         checkExposedPorts(getHelmChartOptions().getExposedPorts());
@@ -102,7 +100,7 @@ public class HelmChartServer extends AbstractExternalTigerServer {
 
         exposedPorts.forEach(entry -> {
             entry = entry.replaceAll("\\s", "");
-            List<String> singleEx = Arrays.stream(entry.split(",")).collect(Collectors.toList());
+            List<String> singleEx = Arrays.stream(entry.split(",")).toList();
             if (singleEx.size() < 2 || !(singleEx.get(0).matches("[a-zA-Z*_.-]{3,}"))) {
                 throw new TigerTestEnvException(EXPOSED_PORT_MESSAGE);
             }
@@ -128,8 +126,8 @@ public class HelmChartServer extends AbstractExternalTigerServer {
                 shutdown();
             }
         } catch (TigerTestEnvException exception) {
-            log.warn("Exception while checking for left over pods of helm chart " + getServerId() + "!\nCheck your cluster setup!",
-                exception);
+            log.warn("Exception while checking for left over pods of helm chart {}!\n" +
+                    "Check your cluster setup!", getServerId());
             throw exception;
         }
 
@@ -141,13 +139,14 @@ public class HelmChartServer extends AbstractExternalTigerServer {
         try {
             CompletableFuture<Process> startHelmChart = kubeUtils.startupHelmChart();
             startHelmChart.thenAccept(process -> {
-                new TigerStreamLogFeeder(log, process.getInputStream(), Level.INFO);
-                new TigerStreamLogFeeder(log, process.getErrorStream(), Level.ERROR);
+                new TigerStreamLogFeeder(getServerId(), log, process.getInputStream(), Level.INFO);
+                new TigerStreamLogFeeder(getServerId(), log, process.getErrorStream(), Level.ERROR);
                 statusMessage("Started helm upgrade for " + getServerId() + " with PID '" + process.pid() + "'");
             });
             exitCode = kubeUtils.getSafely(startHelmChart, "start helm chart").waitFor();
         } catch (InterruptedException e) {
             log.error("Failed to start helm chart - InterruptedException {}", getServerId());
+            Thread.currentThread().interrupt();
             throw new TigerTestEnvException("Failed to start helm chart - InterruptedException {}", e);
         }
         if (exitCode != 0) {

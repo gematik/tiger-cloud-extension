@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 gematik GmbH
+ * Copyright (c) 2024 gematik GmbH
  * 
  * Licensed under the Apache License, Version 2.0 (the License);
  * you may not use this file except in compliance with the License.
@@ -26,53 +26,56 @@ import lombok.Builder;
 import org.apache.commons.lang3.StringUtils;
 
 /**
- * Implementation of the Tiger test environment server type "compose".
- * It starts a set of docker compose files using the {@link DockerMgr} provided as static member from the {@link DockerServer}.
+ * Implementation of the Tiger test environment server type "compose". It starts a set of docker
+ * compose files using the {@link DockerMgr} provided as static member from the {@link
+ * DockerServer}.
  */
 @TigerServerType("compose")
 public class DockerComposeServer extends AbstractTigerServer {
 
-    @Builder
-    public DockerComposeServer(TigerTestEnvMgr tigerTestEnvMgr, String serverId, CfgServer configuration) {
-        super("", serverId, tigerTestEnvMgr, configuration);
-        if (!StringUtils.isBlank(configuration.getHostname())) {
-            throw new TigerConfigurationException("Hostname property is not supported for docker compose nodes!");
-        }
+  @Builder
+  public DockerComposeServer(
+      TigerTestEnvMgr tigerTestEnvMgr, String serverId, CfgServer configuration) {
+    super("", serverId, tigerTestEnvMgr, configuration);
+    if (!StringUtils.isBlank(configuration.getHostname())) {
+      throw new TigerConfigurationException(
+          "Hostname property is not supported for docker compose nodes!");
     }
+  }
 
-    @Override
-    public void assertThatConfigurationIsCorrect() {
-        super.assertThatConfigurationIsCorrect();
-        assertCfgPropertySet(getConfiguration(), "source");
-    }
+  @Override
+  public void assertThatConfigurationIsCorrect() {
+    super.assertThatConfigurationIsCorrect();
+    assertCfgPropertySet(getConfiguration(), "source");
+  }
 
-    @Override
-    public void performStartup() {
-        statusMessage("Starting docker compose for " + getServerId() + " from " + getDockerSource());
-        DockerServer.dockerManager.startComposition(this);
-        statusMessage("Docker compose " + getServerId() + " started");
-    }
+  @Override
+  public void performStartup() {
+    statusMessage("Starting docker compose for " + getServerId() + " from " + getDockerSource());
+    DockerServer.dockerManager.startComposition(this);
+    statusMessage("Docker compose " + getServerId() + " started");
+  }
 
-    public String getDockerSource() {
-        return getConfiguration().getSource().get(0);
-    }
+  public String getDockerSource() {
+    return getConfiguration().getSource().get(0);
+  }
 
-    public CfgDockerOptions getDockerOptions() {
-        return getConfiguration().getDockerOptions();
-    }
+  public CfgDockerOptions getDockerOptions() {
+    return getConfiguration().getDockerOptions();
+  }
 
-    public List<String> getSource() {
-        if (getConfiguration().getSource() == null) {
-            return List.of();
-        }
-        return Collections.unmodifiableList(getConfiguration().getSource());
+  public List<String> getSource() {
+    if (getConfiguration().getSource() == null) {
+      return List.of();
     }
+    return Collections.unmodifiableList(getConfiguration().getSource());
+  }
 
-    @Override
-    public void shutdown() {
-        log.info("Stopping docker compose {}...", getServerId());
-        DockerServer.dockerManager.stopComposeContainer(this);
-        removeAllRoutes();
-        setStatus(TigerServerStatus.STOPPED, "Docker compose " + getServerId() + " stopped");
-    }
+  @Override
+  public void shutdown() {
+    log.info("Stopping docker compose {}...", getServerId());
+    DockerServer.dockerManager.stopComposeContainer(this);
+    removeAllRoutes();
+    setStatus(TigerServerStatus.STOPPED, "Docker compose " + getServerId() + " stopped");
+  }
 }

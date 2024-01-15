@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 gematik GmbH
+ * Copyright (c) 2024 gematik GmbH
  * 
  * Licensed under the Apache License, Version 2.0 (the License);
  * you may not use this file except in compliance with the License.
@@ -16,8 +16,8 @@
 
 package de.gematik.test.tiger.testenvmgr.servers;
 
-import static de.gematik.test.tiger.proxy.TigerProxy.CA_CERT_ALIAS;
 import static org.awaitility.Awaitility.await;
+
 import com.github.dockerjava.api.async.ResultCallback;
 import com.github.dockerjava.api.command.InspectImageResponse;
 import com.github.dockerjava.api.command.ListContainersCmd;
@@ -44,7 +44,6 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
@@ -72,7 +71,7 @@ public class DockerMgr {
 
     private static final String BEGIN_CERT = "-----BEGIN CERTIFICATE-----";
     private static final String END_CERT = "-----END CERTIFICATE-----";
-    private static final String LINE_SEPARATOR = System.getProperty("line.separator");
+    private static final String LINE_SEPARATOR = System.lineSeparator();
     @SuppressWarnings("OctalInteger")
     private static final int MOD_ALL_EXEC = 0777;
 
@@ -81,6 +80,7 @@ public class DockerMgr {
     private static final String DOCKER_COMPOSE_PROP_EXPOSE = "expose";
     public static final String TARGET_FOLDER = "target";
     public static final String TIGER_TESTENV_MGR_FOLDER = "tiger-testenv-mgr";
+    public static final String UNIX_PATH_CHAR = "/";
 
 
     /**
@@ -124,7 +124,7 @@ public class DockerMgr {
                             + server.getServerId());
                 }
                 final String scriptName = createContainerStartupScript(server, iiResponse, startCmd, entryPointCmd);
-                String containerScriptPath = containerConfig.getWorkingDir() + "/" + scriptName;
+                String containerScriptPath = containerConfig.getWorkingDir() + UNIX_PATH_CHAR + scriptName;
                 container.withExtraHost("host.docker.internal", "host-gateway");
 
                 container.withCopyFileToContainer(
@@ -141,7 +141,7 @@ public class DockerMgr {
             if (containerConfig.getExposedPorts() != null) {
                 List<Integer> ports = Arrays.stream(containerConfig.getExposedPorts())
                     .map(ExposedPort::getPort)
-                    .collect(Collectors.toList());
+                    .toList();
                 log.info("Exposing ports for {}: {}", server.getServerId(), ports);
                 container.setExposedPorts(ports);
             }
@@ -434,7 +434,7 @@ public class DockerMgr {
     private static String getTigerProxyRootCaCertificate(AbstractTigerServer server) {
         try {
             final Certificate certificate = server.getTigerTestEnvMgr().getLocalTigerProxyOrFail()
-                .buildTruststore().getCertificate(CA_CERT_ALIAS);
+                .buildTruststore().getCertificate("caCert");
             final Base64.Encoder encoder = Base64.getMimeEncoder(64, "\r\n".getBytes());
 
             final byte[] rawCrtText = certificate.getEncoded();

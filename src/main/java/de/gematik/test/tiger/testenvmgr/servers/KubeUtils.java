@@ -127,7 +127,7 @@ public class KubeUtils {
         List<String> serviceNames = getKubernetesServices();
         exposedPorts.parallelStream()
                 .map(entry -> entry.replaceAll("\\s",""))
-                .map(colonSeparatedValues -> Arrays.stream(colonSeparatedValues.split(",")).collect(Collectors.toList()))
+                .map(colonSeparatedValues -> Arrays.stream(colonSeparatedValues.split(",")).toList())
                 .forEach(values -> {
                     Optional<String> serviceName = serviceNames.stream().filter(svcName -> svcName.equals(values.get(0)) || svcName.matches(values.get(0))).findAny();
                     if (serviceName.isPresent()) {
@@ -165,8 +165,7 @@ public class KubeUtils {
                 InputStream input = process.getInputStream();
                 try {
                     return Arrays.stream(IOUtils.toString(input, StandardCharsets.UTF_8).split("\n"))
-                        .skip(1)
-                        .collect(Collectors.toList());
+                        .skip(1).toList();
                 } catch (IOException e) {
                     throw new TigerTestEnvException("Unable to retrieve list of pods from kubernetes cluster!", e);
                 }
@@ -185,7 +184,7 @@ public class KubeUtils {
                     return Arrays.stream(IOUtils.toString(input, StandardCharsets.UTF_8).split("\n"))
                         .skip(1)
                         .map(line -> line.substring(0, line.indexOf(" ")))
-                        .collect(Collectors.toList());
+                            .toList();
                 } catch (IOException e) {
                     throw new TigerTestEnvException("Unable to retrieve list of services from kubernetes cluster!", e);
                 }
@@ -198,6 +197,7 @@ public class KubeUtils {
             hasExited = getSafely(spinUpNewExternalProcess(processBuilder), "start kubectl port forward").waitFor(1, TimeUnit.SECONDS);
         } catch (InterruptedException e) {
             log.error("Failed to start kubectl port forward - InterruptedException {}", command);
+            Thread.currentThread().interrupt();
             throw new TigerTestEnvException("Failed to start kubectl port forward - InterruptedException {}", e);
         }
         if (hasExited) {
@@ -255,8 +255,7 @@ public class KubeUtils {
     private static TigerServerStatus getTigerServerStatusFromKubeCtlStatus(String[] columns) {
         TigerServerStatus newStatus;
         switch (columns[2]) {
-            case "ContainerCreating":
-            case "Pending":
+            case "ContainerCreating", "Pending":
                 newStatus = TigerServerStatus.STARTING;
                 break;
             case "Running":
@@ -267,10 +266,7 @@ public class KubeUtils {
                     newStatus = TigerServerStatus.STARTING;
                 }
                 break;
-            case "Terminating":
-            case "ImagePullBackOff":
-            case "ErrImagePull":
-            case "Error":
+            case "Terminating", "ImagePullBackOff", "ErrImagePull", "Error":
             default:
                 newStatus = TigerServerStatus.STOPPED;
                 break;
@@ -339,8 +335,8 @@ public class KubeUtils {
                 .command(kubeCtlCommand, "logs", podName, "-n", tigerServer.getConfiguration().getHelmChartOptions().getNameSpace(), "-f")
                 .redirectErrorStream(true);
         spinUpNewExternalProcess(processBuilder).thenAccept(process -> {
-            new TigerStreamLogFeeder(log, process.getInputStream(), Level.INFO);
-            new TigerStreamLogFeeder(log, process.getErrorStream(), Level.ERROR);
+            new TigerStreamLogFeeder("Pod " + podName, log, process.getInputStream(), Level.INFO);
+            new TigerStreamLogFeeder("Pod " + podName, log, process.getErrorStream(), Level.ERROR);
         });
     }
 
@@ -357,9 +353,11 @@ public class KubeUtils {
     public void stopAllProcesses() {
         for (Process process : processes) {
             if (process.isAlive()) {
-                log.info("Destroying process calling kubernetes/helm {} ({})",
-                    process.pid(),
-                    process.info().commandLine().orElse(""));
+                if (log.isInfoEnabled()) {
+                    log.info("Destroying process calling kubernetes/helm {} ({})",
+                            process.pid(),
+                            process.info().commandLine().orElse(""));
+                }
                 process.destroy();
             }
         }
