@@ -1,5 +1,10 @@
 # Changelog tiger-cloud-extension
 
+# Release 1.0.8
+
+## Features
+* upgrade to upcoming Tiger 3.0.0 release
+
 # Release 1.0.6
 
 ## Features
