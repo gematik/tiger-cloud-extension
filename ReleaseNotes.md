@@ -1,9 +1,11 @@
 # Changelog tiger-cloud-extension
 
-# Release 1.0.8
+# Release 1.0.9
 
 ## Features
 * upgrade to upcoming Tiger 3.0.0 release
+* upgrade spring boot 3.2.1
+* upgrade to testcontainers 1.19.3
 
 # Release 1.0.6
 
