@@ -215,22 +215,24 @@ class TestHelmChartServerIT extends AbstractTigerCloudTest {
   @Test
   @TigerTest(
       tigerYaml =
-          "localProxyActive: false\n"
-              + "servers:\n"
-              + "  tigerNginxLiveness:\n"
-              + "    type: helmChart\n"
-              + "    startupTimeoutSec: 180\n"
-              + "    source:\n"
-              + "      - bitnami/nginx\n"
-              + "    helmChartOptions: \n"
-              + "      debug: true\n"
-              + "      nameSpace: tiger\n"
-              + "      podName: tiger-nginx-liveness\n"
-              + "      logPods:\n"
-              + "        - tiger-nginx-liveness.*\n"
-              + "      namespace: tiger\n"
-              + "      exposedPorts:\n"
-              + "        - tiger-nginx-liveness.*, 8080:80 , 8081:80 ")
+          """
+        localProxyActive: false
+        servers:
+          tigerNginxLiveness:
+            type: helmChart
+            startupTimeoutSec: 180
+            source:
+              - bitnami/nginx
+            version: 16.0.3
+            helmChartOptions:
+              debug: true
+              nameSpace: tiger
+              podName: tiger-nginx-liveness
+              logPods:
+                - tiger-nginx-liveness.*
+              namespace: tiger
+              exposedPorts:
+                - tiger-nginx-liveness.*, 8080:80 , 8081:80""")
   void testSetUpEnvironment_CheckLiveness_OK(TigerTestEnvMgr tigerTestEnvMgr) {
     try {
       log.info("Starting testSetUpEnvironment_CheckLiveness_OK");

@@ -1,0 +1,8 @@
+localProxyActive: true
+
+servers:
+  testComposeTestPortMapping:
+    startupTimeoutSec: 20
+    source:
+      - src/test/resources/de/gematik/test/tiger/testenvmgr/docker-compose-test-port-mapping.yaml
+    type: compose

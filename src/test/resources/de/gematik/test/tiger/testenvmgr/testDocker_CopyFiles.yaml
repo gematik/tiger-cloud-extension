@@ -1,0 +1,15 @@
+localProxyActive: false
+
+servers:
+  testDocker_CopyFiles:
+    hostname: testDocker1
+    type: docker
+    source:
+      - docker.io/httpd
+    version: 2.4.49-alpine
+    dockerOptions:
+      copyFiles:
+        - sourcePath: "src/test/resources/de/gematik/test/tiger/testenvmgr/test_file_to_copy.txt"
+          destinationPath: "/usr/local/apache2/htdocs/test_file_inside_container.txt"
+        - sourcePath: "src/test/resources/de/gematik/test/tiger/testenvmgr/test_folder_to_copy"
+          destinationPath: "/usr/local/apache2/htdocs/test_folder_inside_container_to_copy"

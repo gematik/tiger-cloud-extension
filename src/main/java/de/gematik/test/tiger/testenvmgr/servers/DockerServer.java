@@ -17,10 +17,10 @@
 package de.gematik.test.tiger.testenvmgr.servers;
 
 import static de.gematik.test.tiger.testenvmgr.TigerTestEnvMgr.HTTP;
+import static de.gematik.test.tiger.testenvmgr.servers.DockerMgr.DOCKER_HOST;
 
 import de.gematik.test.tiger.common.config.SourceType;
 import de.gematik.test.tiger.common.config.TigerGlobalConfiguration;
-import de.gematik.test.tiger.common.data.config.CfgDockerOptions;
 import de.gematik.test.tiger.common.data.config.tigerproxy.TigerRoute;
 import de.gematik.test.tiger.testenvmgr.TigerTestEnvMgr;
 import de.gematik.test.tiger.testenvmgr.config.CfgServer;
@@ -31,7 +31,7 @@ import lombok.Builder;
  * as container using the {@link DockerMgr}.
  */
 @TigerServerType("docker")
-public class DockerServer extends AbstractExternalTigerServer {
+public class DockerServer extends DockerAbstractServer {
 
   public static final DockerMgr dockerManager = new DockerMgr();
 
@@ -56,15 +56,15 @@ public class DockerServer extends AbstractExternalTigerServer {
 
     // add routes needed for each server to local docker proxy
     // ATTENTION only one route per server!
-    if (getConfiguration().getDockerOptions().getPorts() != null
-        && !getConfiguration().getDockerOptions().getPorts().isEmpty()) {
+    if (getDockerOptions().getPorts() != null && !getDockerOptions().getPorts().isEmpty()) {
       addRoute(
           TigerRoute.builder()
               .from(HTTP + getHostname())
               .to(
                   HTTP
-                      + "localhost:"
-                      + getConfiguration().getDockerOptions().getPorts().values().iterator().next())
+                      + DOCKER_HOST.getValueOrDefault()
+                      + ":"
+                      + getDockerOptions().getPorts().values().iterator().next())
               .build());
     }
 
@@ -75,8 +75,7 @@ public class DockerServer extends AbstractExternalTigerServer {
   protected void processExports() {
     super.processExports();
 
-    if (getConfiguration().getDockerOptions().getPorts() != null
-        && !getConfiguration().getDockerOptions().getPorts().isEmpty()) {
+    if (getDockerOptions().getPorts() != null && !getDockerOptions().getPorts().isEmpty()) {
       getConfiguration()
           .getExports()
           .forEach(
@@ -85,9 +84,8 @@ public class DockerServer extends AbstractExternalTigerServer {
                 String origValue = TigerGlobalConfiguration.readString(kvp[0]);
                 kvp[1] = origValue;
                 // ports substitution are only supported for docker based instances
-                if (getConfiguration().getDockerOptions().getPorts() != null) {
-                  getConfiguration()
-                      .getDockerOptions()
+                if (getDockerOptions().getPorts() != null) {
+                  getDockerOptions()
                       .getPorts()
                       .forEach(
                           (localPort, externPort) ->
@@ -107,14 +105,9 @@ public class DockerServer extends AbstractExternalTigerServer {
     return getConfiguration().getSource().get(0);
   }
 
-  public CfgDockerOptions getDockerOptions() {
-    return getConfiguration().getDockerOptions();
-  }
-
   @Override
   public void shutdown() {
     log.info("Stopping docker container {}...", getServerId());
-    removeAllRoutes();
     dockerManager.stopContainer(this);
     setStatus(TigerServerStatus.STOPPED, "Docker container " + getServerId() + " stopped");
   }

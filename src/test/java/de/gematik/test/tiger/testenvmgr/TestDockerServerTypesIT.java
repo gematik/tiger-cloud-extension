@@ -16,27 +16,32 @@
 
 package de.gematik.test.tiger.testenvmgr;
 
+import static de.gematik.test.tiger.testenvmgr.servers.DockerMgr.DOCKER_HOST;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import de.gematik.test.tiger.common.config.TigerConfigurationException;
 import de.gematik.test.tiger.common.config.TigerGlobalConfiguration;
+import de.gematik.test.tiger.common.data.config.tigerproxy.TigerRoute;
 import de.gematik.test.tiger.testenvmgr.config.CfgServer;
 import de.gematik.test.tiger.testenvmgr.junit.TigerTest;
-import de.gematik.test.tiger.testenvmgr.servers.AbstractTigerServer;
+import de.gematik.test.tiger.testenvmgr.servers.DockerAbstractServer;
 import de.gematik.test.tiger.testenvmgr.servers.DockerServer;
 import de.gematik.test.tiger.testenvmgr.util.TigerTestEnvException;
 import java.io.File;
 import java.io.IOException;
 import java.net.SocketTimeoutException;
-import java.net.URI;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import kong.unirest.GetRequest;
 import kong.unirest.Unirest;
 import kong.unirest.UnirestException;
+import kong.unirest.UnirestInstance;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.http.conn.HttpHostConnectException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -65,9 +70,7 @@ class TestDockerServerTypesIT extends AbstractTigerCloudTest {
     log.info(
         "Active Docker containers: \n{}",
         DockerClientFactory.instance().client().listContainersCmd().exec().stream()
-            .map(
-                container ->
-                    String.join(", ", container.getNames()) + " -> " + container.toString())
+            .map(container -> String.join(", ", container.getNames()) + " -> " + container)
             .collect(Collectors.joining("\n")));
   }
 
@@ -123,9 +126,7 @@ class TestDockerServerTypesIT extends AbstractTigerCloudTest {
     log.info("Starting testSetUpEnvironmentNShutDownMinimumConfigPasses_OK for {}", cfgFileName);
     FileUtils.deleteDirectory(new File("WinstoneHTTPServer"));
     createTestEnvMgrSafelyAndExecute(
-        envMgr -> {
-          envMgr.setUpEnvironment();
-        },
+        TigerTestEnvMgr::setUpEnvironment,
         "src/test/resources/de/gematik/test/tiger/testenvmgr/" + cfgFileName + ".yaml");
   }
 
@@ -161,8 +162,8 @@ class TestDockerServerTypesIT extends AbstractTigerCloudTest {
   void testDockerExportingPortsNHostname_OK(TigerTestEnvMgr envMgr) {
     final String cfgFileName = "testDockerHttpd";
     log.info("Starting testDockerExportingPortsNHostname_OK for {}", cfgFileName);
-    AbstractTigerServer server = envMgr.getServers().get(cfgFileName);
-    assertThat(server.getConfiguration().getDockerOptions().getPorts())
+    DockerAbstractServer server = (DockerAbstractServer) envMgr.getServers().get(cfgFileName);
+    assertThat(server.getDockerOptions().getPorts())
         .as("Checking dockers ports data")
         .hasSize(1)
         .containsKey(80);
@@ -173,7 +174,7 @@ class TestDockerServerTypesIT extends AbstractTigerCloudTest {
         .as("Check exposed ports are parsed")
         .isPresent()
         .get()
-        .isEqualTo(String.valueOf(server.getConfiguration().getDockerOptions().getPorts().get(80)));
+        .isEqualTo(String.valueOf(server.getDockerOptions().getPorts().get(80)));
     assertThat(TigerGlobalConfiguration.readStringOptional("external.hostname"))
         .as("Check hostname is parsed")
         .isPresent()
@@ -189,21 +190,28 @@ class TestDockerServerTypesIT extends AbstractTigerCloudTest {
     log.info("Starting testDockerPauseUnpuase_OK for {}", cfgFileName);
 
     DockerServer server = (DockerServer) envMgr.getServers().get(cfgFileName);
+    String healthcheckUrl = server.getConfiguration().getHealthcheckUrl();
     Unirest.config().reset();
     Unirest.config().socketTimeout(1000).connectTimeout(1000);
-    assertThat(Unirest.get(server.getConfiguration().getHealthcheckUrl()).asString().getStatus())
+
+    assertThat(Unirest.get(healthcheckUrl).asString().getStatus())
         .as("Request to httpd is working")
         .isEqualTo(200);
+
     DockerServer.dockerManager.pauseContainer(server);
-    assertThatThrownBy(() -> Unirest.get(server.getConfiguration().getHealthcheckUrl()).asString())
+    GetRequest requestAfterPause = Unirest.get(healthcheckUrl);
+    assertThatThrownBy(requestAfterPause::asString)
         .isInstanceOf(UnirestException.class)
         .hasCauseInstanceOf(SocketTimeoutException.class);
+
     DockerServer.dockerManager.unpauseContainer(server);
-    assertThat(Unirest.get(server.getConfiguration().getHealthcheckUrl()).asString().getStatus())
+    assertThat(Unirest.get(healthcheckUrl).asString().getStatus())
         .as("Request to httpd after resuming is working")
         .isEqualTo(200);
+
     DockerServer.dockerManager.stopContainer(server);
-    assertThatThrownBy(() -> Unirest.get(server.getConfiguration().getHealthcheckUrl()).asString())
+    GetRequest requestAfterStop = Unirest.get(healthcheckUrl);
+    assertThatThrownBy(requestAfterStop::asString)
         .isInstanceOf(UnirestException.class)
         .hasCauseInstanceOf(HttpHostConnectException.class);
   }
@@ -213,22 +221,17 @@ class TestDockerServerTypesIT extends AbstractTigerCloudTest {
     createTestEnvMgrSafelyAndExecute(
         envMgr -> {
           envMgr.setUpEnvironment();
-          String host = System.getenv("DOCKER_HOST");
-          if (host == null) {
-            host = "localhost";
-          } else {
-            host = new URI(host).getHost();
-          }
           log.info(
               "Web server expected to serve at {}",
-              TigerGlobalConfiguration.resolvePlaceholders("http://" + host + ":${free.port.1}"));
+              TigerGlobalConfiguration.resolvePlaceholders(
+                  "http://" + DOCKER_HOST.getValueOrDefault() + ":${free.port.1}"));
           try {
             log.info(
                 "Web server responds with: "
                     + Unirest.spawnInstance()
                         .get(
                             TigerGlobalConfiguration.resolvePlaceholders(
-                                "http://" + host + ":${free.port.1}"))
+                                "http://" + DOCKER_HOST.getValueOrDefault() + ":${free.port.1}"))
                         .asString()
                         .getBody());
           } catch (Exception e) {
@@ -238,11 +241,94 @@ class TestDockerServerTypesIT extends AbstractTigerCloudTest {
                   Unirest.spawnInstance()
                       .get(
                           TigerGlobalConfiguration.resolvePlaceholders(
-                              "http://" + host + ":${free.port.1}"))
+                              "http://" + DOCKER_HOST.getValueOrDefault() + ":${free.port.1}"))
                       .asString()
                       .getStatus())
               .isEqualTo(200);
         },
         "src/test/resources/de/gematik/test/tiger/testenvmgr/testComposeMVP.yaml");
+  }
+
+  /** test that docker compose adds routes to tiger proxy */
+  @Test
+  void testCreateDockerComposeAndCheckRoutesAreAddedToTigerProxy() {
+    createTestEnvMgrSafelyAndExecute(
+        (envMgr) -> {
+          envMgr.setUpEnvironment();
+          List<TigerRoute> routes = envMgr.getLocalTigerProxyOrFail().getRoutes();
+          assertThat(routes)
+              .as("Checking routes are added to tiger proxy")
+              .extracting(route -> Pair.of(route.getFrom(), route.getTo()))
+              .contains(
+                  Pair.of(
+                      "http://testComposeTestPortMapping-webserver-80",
+                      TigerGlobalConfiguration.resolvePlaceholders(
+                          "http://" + DOCKER_HOST.getValueOrDefault() + ":${free.port.1}")),
+                  Pair.of(
+                      "http://testComposeTestPortMapping-httpbin-80",
+                      TigerGlobalConfiguration.resolvePlaceholders(
+                          "http://" + DOCKER_HOST.getValueOrDefault() + ":${free.port.2}")));
+
+          // check that servers are reachable over the direct uri
+          try (UnirestInstance instanceForDirectAccess = Unirest.spawnInstance()) {
+            GetRequest requestWebServerDirectly =
+                instanceForDirectAccess.get(
+                    TigerGlobalConfiguration.resolvePlaceholders(
+                        "http://" + DOCKER_HOST.getValueOrDefault() + ":${free.port.1}"));
+            assertThat(requestWebServerDirectly.asString().getStatus())
+                .as("Request to webserver directly is working")
+                .isEqualTo(200);
+            GetRequest requestHttpBinDirectly =
+                instanceForDirectAccess.get(
+                    TigerGlobalConfiguration.resolvePlaceholders(
+                        "http://"
+                            + DOCKER_HOST.getValueOrDefault()
+                            + ":${free.port.2}/status/200"));
+            assertThat(requestHttpBinDirectly.asString().getStatus())
+                .as("Request to httpbin directly is working")
+                .isEqualTo(200);
+          }
+
+          // check that servers are reachable over the tiger proxy route
+          try (UnirestInstance instanceViaTigerProxy = Unirest.spawnInstance()) {
+            instanceViaTigerProxy
+                .config()
+                .proxy("localhost", envMgr.getLocalTigerProxyOrFail().getProxyPort());
+
+            GetRequest requestHttpBinViaTigerProxy =
+                instanceViaTigerProxy.get(
+                    "http://testComposeTestPortMapping-httpbin-80/status/200");
+            assertThat(requestHttpBinViaTigerProxy.asString().getStatus())
+                .as("Request to httpbin via tiger proxy is working")
+                .isEqualTo(200);
+            GetRequest requestWebServerViaTigerProxy =
+                instanceViaTigerProxy.get("http://testComposeTestPortMapping-webserver-80");
+
+            assertThat(requestWebServerViaTigerProxy.asString().getStatus())
+                .as("Request to webserver via tiger proxy is working")
+                .isEqualTo(200);
+          }
+        },
+        "src/test/resources/de/gematik/test/tiger/testenvmgr/testComposeTestPortMapping.yaml");
+  }
+
+  @Test
+  void testCreateDockerWithCopyFiles_filesShouldBeInContainer() {
+    var cfgFile = "testDocker_CopyFiles";
+    createTestEnvMgrSafelyAndExecute(
+        "src/test/resources/de/gematik/test/tiger/testenvmgr/" + cfgFile + ".yaml",
+        envMgr -> {
+          envMgr.setUpEnvironment();
+          DockerAbstractServer server = (DockerAbstractServer) envMgr.getServers().get(cfgFile);
+          var mappedPort = server.getDockerOptions().getPorts().get(80);
+          var baseUrl = "http://" + DOCKER_HOST.getValueOrDefault() + ":" + mappedPort;
+          assertThat(Unirest.get(baseUrl + "/test_file_inside_container.txt").asString().getBody())
+              .isEqualTo("this is the content of test_file_to_copy.txt");
+          assertThat(
+                  Unirest.get(baseUrl + "/test_folder_inside_container_to_copy/a_file.txt")
+                      .asString()
+                      .getBody())
+              .isEqualTo("this is the content of test_folder_to_copy/a_file.txt");
+        });
   }
 }

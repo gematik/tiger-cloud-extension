@@ -6,6 +6,7 @@ servers:
     startupTimeoutSec: 90
     source:
       - bitnami/nginx
+    version: 16.0.3
     helmChartOptions:
       debug: true
       nameSpace: tiger

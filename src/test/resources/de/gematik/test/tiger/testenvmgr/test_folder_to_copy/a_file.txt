@@ -1,0 +1,1 @@
+this is the content of test_folder_to_copy/a_file.txt
