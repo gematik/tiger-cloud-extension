@@ -44,6 +44,15 @@ You will need microk8s configured correctly to run local tests:
 * kubectl create namespace tiger
 * microk8s config > ~/.kube/config
 
+## Docker Image Requirements
+
+When starting a container with the tiger cloud extension, tiger makes some modifications on the entry point script to
+add the Tiger Proxy certificate to the container's operating system list of trusted certificates. In order for this to
+work, the image of the container must have the following tools available:
+
+* `/bin/sh`- sh shell
+* `/bin/env` - env command
+
 ## Server Types
 
 ### Docker

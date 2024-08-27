@@ -7,3 +7,4 @@ Jenkinsfile
 Maven-Central-Release.Jenkinsfile
 Release.Jenkinsfile
 Dependabot.Jenkinsfile
+CodeCheck.Jenkinsfile
