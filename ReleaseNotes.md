@@ -1,5 +1,18 @@
 # Changelog tiger-cloud-extension
 
+# Release 10.0.18
+
+## Features
+
+* upgrade to 
+  * testcontainers 1.20.4
+  * tiger 3.6.1
+  * junit 5.11.4
+
+## Bugfixes
+* TCLE-17 - a rootCA is not necessarily present at Tiger Proxy keystore
+* TGR-1660: Jenkins notification for release pipeline adjusted
+
 # Release 1.0.11
 
 ## Features

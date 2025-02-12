@@ -95,11 +95,13 @@ public class KubeUtils {
             .command(kubeCtlCommand, "config", "use-context", context)
             .redirectErrorStream(true);
     applyEnvPropertiesToProcess(processBuilder);
-    int exitCode =
+
+    Process process =
         getSafely(
                 spinUpNewExternalProcess(processBuilder),
-                "set context " + context + " for server " + tigerServer.getServerId())
-            .exitValue();
+                "set context " + context + " for server " + tigerServer.getServerId());
+
+    int exitCode = getSafely(process.onExit(), "waiting for process to terminate").exitValue();
     if (exitCode != 0) {
       throw new TigerTestEnvException(
           "Setting context '%s' yielded an error exit code from kubectl" + " for server %s!",
@@ -114,7 +116,6 @@ public class KubeUtils {
             .directory(new File(workingDirectory))
             .redirectErrorStream(true)
             .inheritIO();
-
     applyEnvPropertiesToProcess(processBuilder);
     return spinUpNewExternalProcess(processBuilder);
   }

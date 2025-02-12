@@ -26,6 +26,7 @@ import de.gematik.test.tiger.testenvmgr.config.CfgServer;
 import de.gematik.test.tiger.testenvmgr.junit.TigerTest;
 import de.gematik.test.tiger.testenvmgr.servers.HelmChartServer;
 import de.gematik.test.tiger.testenvmgr.servers.KubeUtils;
+import de.gematik.test.tiger.testenvmgr.util.TigerEnvironmentStartupException;
 import de.gematik.test.tiger.testenvmgr.util.TigerTestEnvException;
 import java.util.ArrayList;
 import java.util.List;
@@ -147,7 +148,8 @@ class TestHelmChartServerIT extends AbstractTigerCloudTest {
                 createTestEnvMgrSafelyAndExecute(
                     TigerTestEnvMgr::setUpEnvironment,
                     "src/test/resources/de/gematik/test/tiger/testenvmgr/" + cfgFileName + ".yaml"))
-        .isInstanceOf(TigerTestEnvException.class)
+        .isInstanceOf(TigerEnvironmentStartupException.class)
+        .cause()
         .hasMessageContaining(HelmChartServer.FAILED_START_MESSAGE);
   }
 
@@ -170,7 +172,8 @@ class TestHelmChartServerIT extends AbstractTigerCloudTest {
                   () -> {
                     tigerTestEnvMgr.setUpEnvironment();
                   })
-              .isInstanceOf(TigerTestEnvException.class)
+              .isInstanceOf(TigerEnvironmentStartupException.class)
+                  .cause()
               .hasMessageContaining(errorMessage);
           log.info("Test for {} passed", cfgFileName);
         },
@@ -200,7 +203,8 @@ class TestHelmChartServerIT extends AbstractTigerCloudTest {
                   () -> {
                     tigerTestEnvMgr.setUpEnvironment();
                   })
-              .isInstanceOf(TigerTestEnvException.class)
+              .isInstanceOf(TigerEnvironmentStartupException.class)
+              .cause()
               .hasMessageContaining(errorMessage);
           log.info("Test for {} passed", cfgFileName);
         },
@@ -226,11 +230,10 @@ class TestHelmChartServerIT extends AbstractTigerCloudTest {
             version: 16.0.3
             helmChartOptions:
               debug: true
-              nameSpace: tiger
               podName: tiger-nginx-liveness
+              nameSpace: tiger
               logPods:
                 - tiger-nginx-liveness.*
-              namespace: tiger
               exposedPorts:
                 - tiger-nginx-liveness.*, 8080:80 , 8081:80""")
   void testSetUpEnvironment_CheckLiveness_OK(TigerTestEnvMgr tigerTestEnvMgr) {

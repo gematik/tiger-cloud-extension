@@ -1,0 +1,20 @@
+localProxyActive: true
+
+servers:
+  testDockerHttpdHealth:
+    startupTimeoutSec: 20
+    hostname: testDockerHttpdHealth
+    source:
+      - docker.io/httpd
+    version: 2.4.49-alpine
+    type: docker
+    environment:
+      - ENV_FOR_DOCKER=1234567890
+    exports:
+      - EXTERNAL_HTTP_PORT=${PORT:80}
+      - EXTERNAL_HOSTNAME=${NAME}
+    healthcheckUrl: http://www.example.com
+    dockerOptions:
+      ports:
+        - 80:80
+

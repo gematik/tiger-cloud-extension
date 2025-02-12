@@ -6,8 +6,9 @@ servers:
     startupTimeoutSec: 80
     source:
       - ./hello-world
+    version: 1.0.0
     helmChartOptions:
       debug: true
       nameSpace: tiger
-      podName: test-helm-chart
+      podName: test-helm-chart-test
       workingDir: 'src/test/resources/helmCharts'

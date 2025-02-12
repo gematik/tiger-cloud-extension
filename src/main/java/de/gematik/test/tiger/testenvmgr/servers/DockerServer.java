@@ -21,7 +21,7 @@ import static de.gematik.test.tiger.testenvmgr.servers.DockerMgr.DOCKER_HOST;
 
 import de.gematik.test.tiger.common.config.ConfigurationValuePrecedence;
 import de.gematik.test.tiger.common.config.TigerGlobalConfiguration;
-import de.gematik.test.tiger.common.data.config.tigerproxy.TigerRoute;
+import de.gematik.test.tiger.common.data.config.tigerproxy.TigerConfigurationRoute;
 import de.gematik.test.tiger.testenvmgr.TigerTestEnvMgr;
 import de.gematik.test.tiger.testenvmgr.config.CfgServer;
 import lombok.Builder;
@@ -58,7 +58,7 @@ public class DockerServer extends DockerAbstractServer {
     // ATTENTION only one route per server!
     if (getDockerOptions().getPorts() != null && !getDockerOptions().getPorts().isEmpty()) {
       addRoute(
-          TigerRoute.builder()
+          TigerConfigurationRoute.builder()
               .from(HTTP + getHostname())
               .to(
                   HTTP
@@ -95,7 +95,8 @@ public class DockerServer extends DockerAbstractServer {
                 }
                 if (!origValue.equals(kvp[1])) {
                   log.info("Setting global property {}={}", kvp[0], kvp[1]);
-                  TigerGlobalConfiguration.putValue(kvp[0], kvp[1], ConfigurationValuePrecedence.RUNTIME_EXPORT);
+                  TigerGlobalConfiguration.putValue(
+                      kvp[0], kvp[1], ConfigurationValuePrecedence.RUNTIME_EXPORT);
                 }
               });
     }

@@ -33,8 +33,6 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.security.GeneralSecurityException;
-import java.security.cert.Certificate;
 import java.util.*;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -44,7 +42,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.json.JSONObject;
 import org.testcontainers.DockerClientFactory;
-import org.testcontainers.containers.DockerComposeContainer;
+import org.testcontainers.containers.ComposeContainer;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.output.Slf4jLogConsumer;
 import org.testcontainers.containers.startupcheck.OneShotStartupCheckStrategy;
@@ -63,14 +61,8 @@ import org.testcontainers.utility.MountableFile;
 @Getter
 public class DockerMgr {
 
-  private static final String BEGIN_CERT = "-----BEGIN CERTIFICATE-----";
-  private static final String END_CERT = "-----END CERTIFICATE-----";
-  private static final String LINE_SEPARATOR = System.lineSeparator();
-
   @SuppressWarnings("OctalInteger")
   private static final int MOD_ALL_EXEC = 0777;
-
-  private static final int OCTAL_NUMBER_RADIX = 8;
 
   private static final String CLASSPATH = "classpath:";
 
@@ -85,7 +77,7 @@ public class DockerMgr {
   private final Map<String, GenericContainer<?>> dockerContainers = new HashMap<>();
 
   /** stores a reference for each server id to the related docker compose container running. */
-  private final Map<String, DockerComposeContainer<?>> composeContainers = new HashMap<>();
+  private final Map<String, ComposeContainer> composeContainers = new HashMap<>();
 
   @SuppressWarnings("unused")
   public void startContainer(final DockerServer server) {
@@ -235,54 +227,43 @@ public class DockerMgr {
 
   public void startComposition(final DockerComposeServer server) {
     List<String> composeFileContents = new ArrayList<>();
-    File[] composeFiles =
+    File[] composeFiles;
+    if (server.getDockerOptions().isResolveComposeFiles()) {
+    composeFiles =
         collectAndProcessComposeYamlFiles(
             server.getServerId(), server.getSource(), composeFileContents);
+    } else {
+      composeFiles = server.getSource().stream().map(File::new).toList().toArray(new File[0]);
+      server.getSource().stream()
+          .map(File::new)
+          .forEach(
+              file -> {
+                try {
+                  composeFileContents.add(FileUtils.readFileToString(file, StandardCharsets.UTF_8));
+                } catch (IOException e) {
+                  throw new TigerEnvironmentStartupException("Unable to read compose file '" + file.getAbsolutePath() +"'", e);
+                }
+              });
+    }
     String identity = "tiger_" + Base58.randomString(6).toLowerCase();
-    DockerComposeContainer<?> composition =
-        new DockerComposeContainer<>(identity, composeFiles); // NOSONAR
 
+    ComposeContainer composeContainer = new ComposeContainer(identity, composeFiles);
     composeFileContents.stream()
         .filter(content -> !content.isEmpty())
         .map(content -> TigerSerializationUtil.yamlToJsonObject(content).getJSONObject("services"))
         .map(JSONObject::toMap)
         .flatMap(services -> services.entrySet().stream())
         .forEach(
-            serviceEntry -> {
-              var map = ((Map<String, ?>) serviceEntry.getValue());
-              if (map.containsKey(DOCKER_COMPOSE_PROP_EXPOSE)) {
-                ((List<Integer>) map.get(DOCKER_COMPOSE_PROP_EXPOSE))
-                    .forEach(
-                        port -> {
-                          log.info("Exposing service {} with port {}", serviceEntry.getKey(), port);
-                          composition.withExposedService(serviceEntry.getKey(), port);
-                        });
-              }
-              if (map.containsKey("ports")) {
-                ((List<String>) map.get("ports"))
-                    .forEach(
-                        portString -> {
-                          if (!portString.contains(":")) {
-                            log.warn(
-                                "Docker compose with ephemeral host ports not supported as of now ,"
-                                    + " please specify manual host port for '{}'",
-                                portString);
-                          } else {
-                            PortMapping mapping = PortMapping.fromPortMappingString(portString);
-                            server.addPortMapping(serviceEntry.getKey(), mapping);
-                            log.info(
-                                "Exposing port {} of service {} to host port {}",
-                                mapping.dockerPort(),
-                                serviceEntry.getKey(),
-                                mapping.hostPort());
-                          }
-                        });
-              }
-              composition.withLogConsumer(serviceEntry.getKey(), new Slf4jLogConsumer(log));
-            });
+            serviceEntry -> exposeServicesAndMapExposedPorts(server, serviceEntry, composeContainer));
     // ALERT! Jenkins only works with local docker compose!
     // So do not change this unless you VERIFIED it also works on Jenkins builds
-    composition.withLocalCompose(true).withOptions("--compatibility").start(); // NOSONAR
+    if (server.getDockerOptions().isWithLocalDockerCompose()) {
+      log.info("Starting {} with local compose...", server.getServerId());
+      composeContainer.withLocalCompose(true).start();
+    } else {
+      log.info("Starting {} without local compose...", server.getServerId());
+      composeContainer.start();
+    }
 
     composeFileContents.stream()
         .filter(content -> !content.isEmpty())
@@ -290,25 +271,60 @@ public class DockerMgr {
         .map(JSONObject::toMap)
         .flatMap(services -> services.entrySet().stream())
         .forEach(
-            serviceEntry -> {
-              var map = ((Map<String, ?>) serviceEntry.getValue());
-              if (map.containsKey(DOCKER_COMPOSE_PROP_EXPOSE)) {
-                ((List<Integer>) map.get(DOCKER_COMPOSE_PROP_EXPOSE))
-                    .forEach(
-                        port -> {
-                          log.info(
-                              "Service {} with port {} exposed via {}",
-                              serviceEntry.getKey(),
-                              port,
-                              composition.getServicePort(serviceEntry.getKey(), port));
-                          ListContainersCmd cmd =
-                              DockerClientFactory.instance().client().listContainersCmd();
-                          log.debug("Inspecting docker container: {}", cmd.exec().toString());
-                        });
-              }
-              composition.withLogConsumer(serviceEntry.getKey(), new Slf4jLogConsumer(log));
-            });
-    composeContainers.put(server.getServerId(), composition);
+            serviceEntry -> logExposedPortsOfComposition(serviceEntry, composeContainer));
+    composeContainers.put(server.getServerId(), composeContainer);
+  }
+
+  private static void logExposedPortsOfComposition(Map.Entry<String, Object> serviceEntry, ComposeContainer composeContainer) {
+    var map = ((Map<String, ?>) serviceEntry.getValue());
+    if (map.containsKey(DOCKER_COMPOSE_PROP_EXPOSE)) {
+      ((List<Integer>) map.get(DOCKER_COMPOSE_PROP_EXPOSE))
+          .forEach(
+              port -> {
+                log.info(
+                    "Service {} with port {} exposed via {}",
+                    serviceEntry.getKey(),
+                    port,
+                        composeContainer.getServicePort(serviceEntry.getKey(), port));
+                ListContainersCmd cmd =
+                    DockerClientFactory.instance().client().listContainersCmd();
+                log.debug("Inspecting docker container: {}", cmd.exec().toString());
+              });
+    }
+    composeContainer.withLogConsumer(serviceEntry.getKey(), new Slf4jLogConsumer(log));
+  }
+
+  private static void exposeServicesAndMapExposedPorts(DockerComposeServer server, Map.Entry<String, Object> serviceEntry, ComposeContainer composeContainer) {
+    var map = ((Map<String, ?>) serviceEntry.getValue());
+    if (map.containsKey(DOCKER_COMPOSE_PROP_EXPOSE)) {
+      ((List<Integer>) map.get(DOCKER_COMPOSE_PROP_EXPOSE))
+          .forEach(
+              port -> {
+                log.info("Exposing service {} with port {}", serviceEntry.getKey(), port);
+                composeContainer.withExposedService(serviceEntry.getKey(), port);
+              });
+    }
+    if (map.containsKey("ports")) {
+      ((List<String>) map.get("ports"))
+          .forEach(
+              portString -> {
+                if (!portString.contains(":")) {
+                  log.warn(
+                      "Docker compose with ephemeral host ports not supported as of now ,"
+                          + " please specify manual host port for '{}'",
+                      portString);
+                } else {
+                  PortMapping mapping = PortMapping.fromPortMappingString(portString);
+                  server.addPortMapping(serviceEntry.getKey(), mapping);
+                  log.info(
+                      "Exposing port {} of service {} to host port {}",
+                      mapping.dockerPort(),
+                      serviceEntry.getKey(),
+                      mapping.hostPort());
+                }
+              });
+    }
+    composeContainer.withLogConsumer(serviceEntry.getKey(), new Slf4jLogConsumer(log));
   }
 
   private File[] collectAndProcessComposeYamlFiles(
@@ -444,7 +460,6 @@ public class DockerMgr {
   @NotNull
   private String addCertitifcatesToOsTruststoreOfDockerContainer(
       AbstractTigerServer server, String content) throws IOException {
-    final var proxycert = getTigerProxyRootCaCertificate(server);
     final var lecert =
         IOUtils.toString(
             Objects.requireNonNull(getClass().getResourceAsStream("/letsencrypt.crt")),
@@ -453,27 +468,8 @@ public class DockerMgr {
         IOUtils.toString(
             Objects.requireNonNull(getClass().getResourceAsStream("/idp-rise-tu.crt")),
             StandardCharsets.UTF_8);
-    content +=
-        String.format(ECHO_CERT_CMD + ECHO_CERT_CMD + ECHO_CERT_CMD, proxycert, lecert, risecert);
+    content += String.format(ECHO_CERT_CMD + ECHO_CERT_CMD, lecert, risecert);
     return content;
-  }
-
-  private static String getTigerProxyRootCaCertificate(AbstractTigerServer server) {
-    try {
-      final Certificate certificate =
-          server
-              .getTigerTestEnvMgr()
-              .getLocalTigerProxyOrFail()
-              .buildTruststore()
-              .getCertificate("caCert");
-      final Base64.Encoder encoder = Base64.getMimeEncoder(64, "\r\n".getBytes());
-
-      final byte[] rawCrtText = certificate.getEncoded();
-      final String encodedCertText = new String(encoder.encode(rawCrtText));
-      return BEGIN_CERT + LINE_SEPARATOR + encodedCertText + LINE_SEPARATOR + END_CERT;
-    } catch (GeneralSecurityException e) {
-      throw new TigerEnvironmentStartupException("Error while retrieving TigerProxy RootCa", e);
-    }
   }
 
   private String getContainerWorkingDirectory(ContainerConfig containerConfig) {
@@ -487,52 +483,60 @@ public class DockerMgr {
 
   private void waitForHealthyStartup(DockerAbstractServer server, GenericContainer<?> container) {
     final long startms = System.currentTimeMillis();
-    long endhalfms = server.getStartupTimeoutSec().map(millis -> millis * 500L).orElse(5000L);
+    long endhalfms = calculateEndHalfMs(server);
+
     try {
-      while (!container.isHealthy()) {
-        //noinspection BusyWait
-        Thread.sleep(500);
-        if (startms + endhalfms * 2L < System.currentTimeMillis()) {
-          throw new TigerTestEnvException(
-              "Startup of server %s timed out after %d seconds!",
-              server.getServerId(), (System.currentTimeMillis() - startms) / 1000);
-        }
-      }
+      waitForContainerHealth(server, container, startms, endhalfms);
       log.info("HealthCheck OK ({}) for {}", (container.isHealthy() ? 1 : 0), server.getServerId());
     } catch (InterruptedException ie) {
-      log.warn(
-          "Interruption signaled while waiting for server " + server.getServerId() + " to start up",
-          ie);
-      Thread.currentThread().interrupt();
+      handleInterruptedException(server, ie);
     } catch (TigerTestEnvException ttee) {
       throw ttee;
     } catch (final RuntimeException rte) {
-      if (server.getDockerOptions() == null
-          || server.getDockerOptions().getPorts() == null
-          || server.getDockerOptions().getPorts().isEmpty()) {
-        log.warn(
-            "No healthcheck and no port bindings configured in docker image - waiting {}s",
-            endhalfms / 500L);
-        try {
-          Thread.sleep(endhalfms * 2L);
-        } catch (final InterruptedException e) {
-          log.warn("Interrupted while waiting for startup of server " + server.getServerId(), e);
-          Thread.currentThread().interrupt();
-        }
-        log.warn(
-            "Status UNCLEAR for {} as no healthcheck / port bindings were configured in the docker"
-                + " image, we assume it works and continue setup!",
-            server.getServerId());
-      } else {
-        server
-            .getConfiguration()
-            .setHealthcheckUrl(
-                "http://"
-                    + DOCKER_HOST.getValueOrDefault()
-                    + ":"
-                    + server.getDockerOptions().getPorts().values().iterator().next());
-        server.waitForServerUp();
+      handleRuntimeException(server, endhalfms);
+    }
+  }
+
+  private long calculateEndHalfMs(DockerAbstractServer server) {
+    return server.getStartupTimeoutSec().map(millis -> millis * 500L).orElse(5000L);
+  }
+
+  private void waitForContainerHealth(
+          DockerAbstractServer server, GenericContainer<?> container, long startms, long endhalfms)
+      throws InterruptedException {
+    while (!container.isHealthy()) {
+      Thread.sleep(500);
+      if (startms + endhalfms * 2L < System.currentTimeMillis()) {
+        throw new TigerTestEnvException(
+            "Startup of server %s timed out after %d seconds!",
+            server.getServerId(), (System.currentTimeMillis() - startms) / 1000);
       }
+    }
+  }
+
+  private void handleInterruptedException(DockerAbstractServer server, InterruptedException ie) {
+    log.warn(
+        "Interruption signaled while waiting for server " + server.getServerId() + " to start up",
+        ie);
+    Thread.currentThread().interrupt();
+  }
+
+  private void handleRuntimeException(DockerAbstractServer server, long endhalfms) {
+    if (server.getDockerOptions() == null || server.getDockerOptions().getPorts() == null || server.getDockerOptions().getPorts().isEmpty()) {
+      log.warn("No healthcheck and no port bindings configured in docker image - waiting {}s", endhalfms / 500L);
+      try {
+        Thread.sleep(endhalfms * 2L);
+      } catch (final InterruptedException e) {
+        log.warn("Interrupted while waiting for startup of server " + server.getServerId(), e);
+        Thread.currentThread().interrupt();
+      }
+      log.warn("Status UNCLEAR for {} as no healthcheck / port bindings were configured in the docker image, we assume it works and continue setup!", server.getServerId());
+    } else {
+      if (server.getHealthcheckUrl().isEmpty()) {
+        server.getConfiguration().setHealthcheckUrl(
+                "http://" + DOCKER_HOST.getValueOrDefault() + ":" + server.getDockerOptions().getPorts().values().iterator().next());
+      }
+      server.waitForServerUp();
     }
   }
 
@@ -553,7 +557,7 @@ public class DockerMgr {
   }
 
   public void stopComposeContainer(final AbstractTigerServer server) {
-    final DockerComposeContainer<?> container = composeContainers.get(server.getServerId());
+    final ComposeContainer container = composeContainers.get(server.getServerId());
     if (container != null) {
       try {
         container.stop();

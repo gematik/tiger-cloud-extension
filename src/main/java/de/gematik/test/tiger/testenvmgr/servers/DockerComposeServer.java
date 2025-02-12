@@ -20,7 +20,7 @@ import static de.gematik.test.tiger.testenvmgr.TigerTestEnvMgr.HTTP;
 import static de.gematik.test.tiger.testenvmgr.servers.DockerMgr.DOCKER_HOST;
 
 import de.gematik.test.tiger.common.config.TigerConfigurationException;
-import de.gematik.test.tiger.common.data.config.tigerproxy.TigerRoute;
+import de.gematik.test.tiger.common.data.config.tigerproxy.TigerConfigurationRoute;
 import de.gematik.test.tiger.testenvmgr.TigerTestEnvMgr;
 import de.gematik.test.tiger.testenvmgr.config.CfgServer;
 import java.util.ArrayList;
@@ -74,7 +74,7 @@ public class DockerComposeServer extends DockerAbstractServer {
             portMappings.forEach(
                 portMapping ->
                     addRoute(
-                        TigerRoute.builder()
+                        TigerConfigurationRoute.builder()
                             .from(
                                 HTTP
                                     + getServerId()
