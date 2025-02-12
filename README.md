@@ -43,6 +43,10 @@ You will need microk8s configured correctly to run local tests:
 
 * kubectl create namespace tiger
 * microk8s config > ~/.kube/config
+* microk8s start
+* things that might help
+  * gcloud auth login
+  * helm repo update
 
 ## Docker Image Requirements
 

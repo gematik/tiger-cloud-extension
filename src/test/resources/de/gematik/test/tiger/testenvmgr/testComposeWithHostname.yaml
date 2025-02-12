@@ -3,4 +3,7 @@ localProxyActive: false
 servers:
   testDemis:
     hostname: testDemis
-    template: demis
+    type: compose
+    source:
+      - classpath:/de/gematik/test/tiger/testenvmgr/demis/demis_localhost.yml
+    startupTimeoutSec: 180

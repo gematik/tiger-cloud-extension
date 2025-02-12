@@ -8,3 +8,4 @@ servers:
     type: compose
     dockerOptions:
       resolveComposeFiles: true
+      withLocalDockerCompose: false

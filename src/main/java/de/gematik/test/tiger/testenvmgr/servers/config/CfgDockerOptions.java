@@ -29,8 +29,14 @@ public class CfgDockerOptions {
    */
   private boolean proxied = true;
 
-  /** For docker type to trigger OneShotStartupStrategy */
+  /** for docker type to trigger OneShotStartupStrategy */
   private boolean oneShot = false;
+
+  /** whether to parse all compose files and resolve potential tiger properties within. Attention if compose files are within a hierarchical folder tree, they will be flattened and mounts/volumes may fail to work */
+  private boolean resolveComposeFiles = true;
+
+  /** whether to start the composition with tesat containers internally or to use the installed local docker composed executable. */
+  private boolean withLocalDockerCompose = true;
 
   /** for docker types allows to overwrite the entrypoint cmd configured with in the container */
   private String entryPoint;

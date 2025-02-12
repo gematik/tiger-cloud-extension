@@ -5,7 +5,7 @@
 replicaCount: 1
 
 image:
-  repository: nginx
+  repository: grafana/k6-httpbin
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: ""
@@ -25,10 +25,41 @@ serviceAccount:
 
 podAnnotations: {}
 
-podSecurityContext: {}
+podSecurityContext:
+  # The GID to tell the Kubelet to modify permissions of a volume owned by a pod
+  fsGroup: 10000
+  # Determines when to apply fsGroup actions - "Always" is the default
+  fsGroupChangePolicy: "OnRootMismatch"
+  # Which GID container process is assigned
+  runAsGroup: 10000
+  # Determine whether container process starts as root (UID 0)
+  runAsNonRoot: true
+  # Which UID container process is assigned
+  runAsUser: 10000
   # fsGroup: 2000
 
-securityContext: {}
+securityContext:
+  #defines whether container can be granted privileges beyond the parent process spawing the process
+  allowPrivilegeEscalation: false
+  #Define whether the container has privileged access e.g. CAP_SYS_ADMIN capability and SELinux spc_t type
+  privileged: false
+  #Usually no longer required. Determines whether /proc is masked to the container. Do not mount /proc from a host to a container
+  procMount: Default
+  # The SELinux context to be applied to the container. Must not be explicitly set to Unconfined.
+  seccompProfile:
+    type: "RuntimeDefault"
+  #Which GID container process is assigned
+  runAsGroup: 10000
+  # Determine whether container process starts as root (UID 0)
+  runAsNonRoot: true
+  #Which UID container process is assigned
+  runAsUser: 10000
+  # Sets the file system as read-only
+  readOnlyRootFilesystem: false
+  #Ability to remove and /or add Linux Capabilities
+  capabilities:
+    drop: ['ALL']
+
   # capabilities:
   #   drop:
   #   - ALL
