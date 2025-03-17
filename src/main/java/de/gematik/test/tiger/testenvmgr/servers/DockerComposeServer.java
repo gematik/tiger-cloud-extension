@@ -43,18 +43,18 @@ public class DockerComposeServer extends DockerAbstractServer {
 
   @Builder
   public DockerComposeServer(
-      TigerTestEnvMgr tigerTestEnvMgr, String serverId, CfgServer configuration) {
-    super("", serverId, configuration, tigerTestEnvMgr);
-    if (!StringUtils.isBlank(configuration.getHostname())) {
-      throw new TigerConfigurationException(
-          "Hostname property is not supported for docker compose nodes!");
-    }
+      String serverId, CfgServer configuration, TigerTestEnvMgr tigerTestEnvMgr) {
+    super(serverId, configuration, tigerTestEnvMgr);
   }
 
   @Override
   public void assertThatConfigurationIsCorrect() {
     super.assertThatConfigurationIsCorrect();
     assertCfgPropertySet(getConfiguration(), "source");
+    if (!StringUtils.isBlank(getConfiguration().getHostname())) {
+      throw new TigerConfigurationException(
+          "Hostname property is not supported for docker compose nodes!");
+    }
   }
 
   @Override

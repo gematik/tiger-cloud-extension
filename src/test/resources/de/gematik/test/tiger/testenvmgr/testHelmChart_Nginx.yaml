@@ -1,7 +1,7 @@
 localProxyActive: false
 
 servers:
-  testHelmChart_Nginx:
+  testHelmChartNginx:
     type: helmChart
     startupTimeoutSec: 50
     source:

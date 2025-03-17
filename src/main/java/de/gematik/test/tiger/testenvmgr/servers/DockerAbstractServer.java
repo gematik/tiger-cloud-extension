@@ -24,8 +24,8 @@ import de.gematik.test.tiger.testenvmgr.servers.config.DockerServerConfiguration
 public abstract class DockerAbstractServer extends AbstractExternalTigerServer {
 
   protected DockerAbstractServer(
-      String hostname, String serverId, CfgServer configuration, TigerTestEnvMgr tigerTestEnvMgr) {
-    super(hostname, serverId, configuration, tigerTestEnvMgr);
+      String serverId, CfgServer configuration, TigerTestEnvMgr tigerTestEnvMgr) {
+    super(serverId, configuration, tigerTestEnvMgr);
   }
 
   @Override

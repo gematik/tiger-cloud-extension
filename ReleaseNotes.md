@@ -1,5 +1,13 @@
 # Changelog tiger-cloud-extension
 
+# Release 10.0.19
+
+## Features
+
+* upgrade to
+  * testcontainers 1.20.6
+  * tiger 3.7.0
+
 # Release 10.0.18
 
 ## Features

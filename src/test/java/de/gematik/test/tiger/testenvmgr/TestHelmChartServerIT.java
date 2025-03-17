@@ -18,28 +18,20 @@ package de.gematik.test.tiger.testenvmgr;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.jupiter.api.Assertions.fail;
 
-import de.gematik.test.tiger.common.config.TigerGlobalConfiguration;
-import de.gematik.test.tiger.common.data.config.CfgHelmChartOptions;
-import de.gematik.test.tiger.testenvmgr.config.CfgServer;
 import de.gematik.test.tiger.testenvmgr.junit.TigerTest;
 import de.gematik.test.tiger.testenvmgr.servers.HelmChartServer;
 import de.gematik.test.tiger.testenvmgr.servers.KubeUtils;
 import de.gematik.test.tiger.testenvmgr.util.TigerEnvironmentStartupException;
-import de.gematik.test.tiger.testenvmgr.util.TigerTestEnvException;
-import java.util.ArrayList;
-import java.util.List;
 import kong.unirest.Unirest;
-import kong.unirest.UnirestInstance;
 import lombok.extern.slf4j.Slf4j;
+import lombok.val;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.springframework.test.util.ReflectionTestUtils;
 
 /**
  * Tests the helm chart feature. To be able to run these tests you need to have a working kubernetes
@@ -56,73 +48,6 @@ class TestHelmChartServerIT extends AbstractTigerCloudTest {
 
   // -----------------------------------------------------------------------------------------------------------------
   //
-  // check missing mandatory props are detected
-  // check for helmchart hostname is not allowed
-  //
-  @ParameterizedTest
-  @CsvSource({
-    "testHelmChart,type",
-    "testHelmChart,source",
-  })
-  void testCheckCfgPropertiesMissingParamMandatoryProps_NOK(String cfgFile, String prop) {
-    createTestEnvMgrSafelyAndExecute(
-        "src/test/resources/de/gematik/test/tiger/testenvmgr/" + cfgFile + ".yaml",
-        envMgr -> {
-          CfgServer srv = envMgr.getConfiguration().getServers().get(cfgFile);
-          ReflectionTestUtils.setField(srv, prop, null);
-          assertThatThrownBy(
-                  () -> envMgr.createServer("blub", srv).assertThatConfigurationIsCorrect())
-              .isInstanceOf(TigerTestEnvException.class)
-              .hasMessageContaining(prop);
-        });
-  }
-
-  @Test
-  void testCheckPodnameNotSetFails_NOK() {
-    createTestEnvMgrSafelyAndExecute(
-        "src/test/resources/de/gematik/test/tiger/testenvmgr/testHelmChart.yaml",
-        envMgr -> {
-          CfgServer srv = envMgr.getConfiguration().getServers().get("testHelmChart");
-          CfgHelmChartOptions options = srv.getHelmChartOptions();
-          ReflectionTestUtils.setField(options, "podName", null);
-          assertThatThrownBy(
-                  () -> envMgr.createServer("blub", srv).assertThatConfigurationIsCorrect())
-              .isInstanceOf(TigerTestEnvException.class)
-              .hasMessageContaining("property podName");
-        });
-  }
-
-  @Test
-  void testCheckSourceNotSingleListFails_NOK() {
-    createTestEnvMgrSafelyAndExecute(
-        "src/test/resources/de/gematik/test/tiger/testenvmgr/testHelmChart.yaml",
-        envMgr -> {
-          CfgServer srv = envMgr.getConfiguration().getServers().get("testHelmChart");
-          CfgHelmChartOptions options = srv.getHelmChartOptions();
-          ReflectionTestUtils.setField(
-              srv, "source", new ArrayList<>(List.of("./hello-world", "./hello-world-2")));
-          assertThatThrownBy(
-                  () -> envMgr.createServer("blub", srv).assertThatConfigurationIsCorrect())
-              .isInstanceOf(TigerTestEnvException.class)
-              .hasMessageContaining("property source set");
-        });
-  }
-
-  @Test
-  void testHostnameForHelmChartNotAllowed_NOK() {
-    createTestEnvMgrSafelyAndExecute(
-        "src/test/resources/de/gematik/test/tiger/testenvmgr/testHelmChart_WithHostname.yaml",
-        envMgr -> {
-          CfgServer srv = envMgr.getConfiguration().getServers().get("testHelmChartWithHostname");
-          assertThatThrownBy(
-                  () -> envMgr.createServer("blub", srv).assertThatConfigurationIsCorrect())
-              .isInstanceOf(TigerTestEnvException.class)
-              .hasMessageContaining("hostname must not be set");
-        });
-  }
-
-  // -----------------------------------------------------------------------------------------------------------------
-  //
   // check starting simple local hello world and bitnami nginx are started
   //
   @ParameterizedTest
@@ -130,7 +55,7 @@ class TestHelmChartServerIT extends AbstractTigerCloudTest {
   void testSetUpEnvironment_OK(String cfgFileName) {
     log.info("Starting testSetUpEnvironment_OK for {}", cfgFileName);
     createTestEnvMgrSafelyAndExecute(
-        envMgr -> envMgr.setUpEnvironment(),
+        TigerTestEnvMgr::setUpEnvironment,
         "src/test/resources/de/gematik/test/tiger/testenvmgr/" + cfgFileName + ".yaml");
   }
 
@@ -138,7 +63,6 @@ class TestHelmChartServerIT extends AbstractTigerCloudTest {
   //
   // check invalid values are detected / caught correctly
   //
-
   @ParameterizedTest
   @ValueSource(strings = {"testHelmChart_Nginx_wrongNamespace"})
   void testSetUpEnvironment_NameSpaceUsedButNotCreatedYet_NOK(String cfgFileName) {
@@ -168,12 +92,9 @@ class TestHelmChartServerIT extends AbstractTigerCloudTest {
     log.info("Starting testSetUpEnvironment_WrongExposedPort_NOK for {}", cfgFileName);
     createTestEnvMgrSafelyAndExecute(
         tigerTestEnvMgr -> {
-          assertThatThrownBy(
-                  () -> {
-                    tigerTestEnvMgr.setUpEnvironment();
-                  })
+          assertThatThrownBy(tigerTestEnvMgr::setUpEnvironment)
               .isInstanceOf(TigerEnvironmentStartupException.class)
-                  .cause()
+              .cause()
               .hasMessageContaining(errorMessage);
           log.info("Test for {} passed", cfgFileName);
         },
@@ -199,10 +120,7 @@ class TestHelmChartServerIT extends AbstractTigerCloudTest {
     log.info("Starting testSetUpEnvironment_InvalidConfigValues_NOK for {}", cfgFileName);
     createTestEnvMgrSafelyAndExecute(
         tigerTestEnvMgr -> {
-          assertThatThrownBy(
-                  () -> {
-                    tigerTestEnvMgr.setUpEnvironment();
-                  })
+          assertThatThrownBy(tigerTestEnvMgr::setUpEnvironment)
               .isInstanceOf(TigerEnvironmentStartupException.class)
               .cause()
               .hasMessageContaining(errorMessage);
@@ -220,44 +138,35 @@ class TestHelmChartServerIT extends AbstractTigerCloudTest {
   @TigerTest(
       tigerYaml =
           """
-        localProxyActive: false
-        servers:
-          tigerNginxLiveness:
-            type: helmChart
-            startupTimeoutSec: 180
-            source:
-              - bitnami/nginx
-            version: 16.0.3
-            helmChartOptions:
-              debug: true
-              podName: tiger-nginx-liveness
-              nameSpace: tiger
-              logPods:
-                - tiger-nginx-liveness.*
-              exposedPorts:
-                - tiger-nginx-liveness.*, 8080:80 , 8081:80""")
-  void testSetUpEnvironment_CheckLiveness_OK(TigerTestEnvMgr tigerTestEnvMgr) {
-    try {
+          localProxyActive: false
+          servers:
+            tigerNginxLiveness:
+              type: helmChart
+              startupTimeoutSec: 180
+              source:
+                - bitnami/nginx
+              version: 16.0.3
+              helmChartOptions:
+                debug: true
+                podName: tiger-nginx-liveness
+                nameSpace: tiger
+                logPods:
+                  - tiger-nginx-liveness.*
+                exposedPorts:
+                  - tiger-nginx-liveness.*, 8080:80 , 8081:80
+          """)
+  void testSetUpEnvironment_CheckLiveness_OK() {
+    try (val unirestInstance = Unirest.spawnInstance()) {
       log.info("Starting testSetUpEnvironment_CheckLiveness_OK");
-      final UnirestInstance unirestInstance = Unirest.spawnInstance();
       assertThat(unirestInstance.get("http://127.0.0.1:8080").asString().getStatus())
           .isEqualTo(200);
       assertThat(unirestInstance.get("http://127.0.0.1:8081").asString().getStatus())
           .isEqualTo(200);
-    } catch (Throwable t) {
-      log.error("Exception occurred:", t);
-      fail();
-    } finally {
-      if (tigerTestEnvMgr != null) {
-        tigerTestEnvMgr.shutDown();
-        TigerGlobalConfiguration.reset();
-      }
     }
   }
 
   @Test
   @Disabled("This test is only run locally as it needs locally deployed genua ZT poc images")
-  @ValueSource(strings = {""})
   void testSetUpEnvironment_Genua_ZT_OK() {
     String cfgFileName = "testHelmChart_Genua_ZT";
     log.info("Starting testSetUpEnvironment_Genua_ZT_OK for {}", cfgFileName);

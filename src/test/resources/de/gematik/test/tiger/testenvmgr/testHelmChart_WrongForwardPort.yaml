@@ -11,5 +11,7 @@ servers:
       debug: true
       nameSpace: tiger
       podName: test-tiger-wrong-forward-port
+      logPods:
+        - test-tiger-wrong*
       exposedPorts:
         - test-tiger-wrong-forward-port.*,8080:6666
