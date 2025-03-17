@@ -229,9 +229,9 @@ public class DockerMgr {
     List<String> composeFileContents = new ArrayList<>();
     File[] composeFiles;
     if (server.getDockerOptions().isResolveComposeFiles()) {
-    composeFiles =
-        collectAndProcessComposeYamlFiles(
-            server.getServerId(), server.getSource(), composeFileContents);
+      composeFiles =
+          collectAndProcessComposeYamlFiles(
+              server.getServerId(), server.getSource(), composeFileContents);
     } else {
       composeFiles = server.getSource().stream().map(File::new).toList().toArray(new File[0]);
       server.getSource().stream()
@@ -241,7 +241,8 @@ public class DockerMgr {
                 try {
                   composeFileContents.add(FileUtils.readFileToString(file, StandardCharsets.UTF_8));
                 } catch (IOException e) {
-                  throw new TigerEnvironmentStartupException("Unable to read compose file '" + file.getAbsolutePath() +"'", e);
+                  throw new TigerEnvironmentStartupException(
+                      "Unable to read compose file '" + file.getAbsolutePath() + "'", e);
                 }
               });
     }
@@ -254,7 +255,8 @@ public class DockerMgr {
         .map(JSONObject::toMap)
         .flatMap(services -> services.entrySet().stream())
         .forEach(
-            serviceEntry -> exposeServicesAndMapExposedPorts(server, serviceEntry, composeContainer));
+            serviceEntry ->
+                exposeServicesAndMapExposedPorts(server, serviceEntry, composeContainer));
     // ALERT! Jenkins only works with local docker compose!
     // So do not change this unless you VERIFIED it also works on Jenkins builds
     if (server.getDockerOptions().isWithLocalDockerCompose()) {
@@ -270,12 +272,12 @@ public class DockerMgr {
         .map(content -> TigerSerializationUtil.yamlToJsonObject(content).getJSONObject("services"))
         .map(JSONObject::toMap)
         .flatMap(services -> services.entrySet().stream())
-        .forEach(
-            serviceEntry -> logExposedPortsOfComposition(serviceEntry, composeContainer));
+        .forEach(serviceEntry -> logExposedPortsOfComposition(serviceEntry, composeContainer));
     composeContainers.put(server.getServerId(), composeContainer);
   }
 
-  private static void logExposedPortsOfComposition(Map.Entry<String, Object> serviceEntry, ComposeContainer composeContainer) {
+  private static void logExposedPortsOfComposition(
+      Map.Entry<String, Object> serviceEntry, ComposeContainer composeContainer) {
     var map = ((Map<String, ?>) serviceEntry.getValue());
     if (map.containsKey(DOCKER_COMPOSE_PROP_EXPOSE)) {
       ((List<Integer>) map.get(DOCKER_COMPOSE_PROP_EXPOSE))
@@ -285,16 +287,18 @@ public class DockerMgr {
                     "Service {} with port {} exposed via {}",
                     serviceEntry.getKey(),
                     port,
-                        composeContainer.getServicePort(serviceEntry.getKey(), port));
-                ListContainersCmd cmd =
-                    DockerClientFactory.instance().client().listContainersCmd();
+                    composeContainer.getServicePort(serviceEntry.getKey(), port));
+                ListContainersCmd cmd = DockerClientFactory.instance().client().listContainersCmd();
                 log.debug("Inspecting docker container: {}", cmd.exec().toString());
               });
     }
     composeContainer.withLogConsumer(serviceEntry.getKey(), new Slf4jLogConsumer(log));
   }
 
-  private static void exposeServicesAndMapExposedPorts(DockerComposeServer server, Map.Entry<String, Object> serviceEntry, ComposeContainer composeContainer) {
+  private static void exposeServicesAndMapExposedPorts(
+      DockerComposeServer server,
+      Map.Entry<String, Object> serviceEntry,
+      ComposeContainer composeContainer) {
     var map = ((Map<String, ?>) serviceEntry.getValue());
     if (map.containsKey(DOCKER_COMPOSE_PROP_EXPOSE)) {
       ((List<Integer>) map.get(DOCKER_COMPOSE_PROP_EXPOSE))
@@ -502,7 +506,7 @@ public class DockerMgr {
   }
 
   private void waitForContainerHealth(
-          DockerAbstractServer server, GenericContainer<?> container, long startms, long endhalfms)
+      DockerAbstractServer server, GenericContainer<?> container, long startms, long endhalfms)
       throws InterruptedException {
     while (!container.isHealthy()) {
       Thread.sleep(500);
@@ -522,19 +526,31 @@ public class DockerMgr {
   }
 
   private void handleRuntimeException(DockerAbstractServer server, long endhalfms) {
-    if (server.getDockerOptions() == null || server.getDockerOptions().getPorts() == null || server.getDockerOptions().getPorts().isEmpty()) {
-      log.warn("No healthcheck and no port bindings configured in docker image - waiting {}s", endhalfms / 500L);
+    if (server.getDockerOptions() == null
+        || server.getDockerOptions().getPorts() == null
+        || server.getDockerOptions().getPorts().isEmpty()) {
+      log.warn(
+          "No healthcheck and no port bindings configured in docker image - waiting {}s",
+          endhalfms / 500L);
       try {
         Thread.sleep(endhalfms * 2L);
       } catch (final InterruptedException e) {
         log.warn("Interrupted while waiting for startup of server " + server.getServerId(), e);
         Thread.currentThread().interrupt();
       }
-      log.warn("Status UNCLEAR for {} as no healthcheck / port bindings were configured in the docker image, we assume it works and continue setup!", server.getServerId());
+      log.warn(
+          "Status UNCLEAR for {} as no healthcheck / port bindings were configured in the docker"
+              + " image, we assume it works and continue setup!",
+          server.getServerId());
     } else {
       if (server.getHealthcheckUrl().isEmpty()) {
-        server.getConfiguration().setHealthcheckUrl(
-                "http://" + DOCKER_HOST.getValueOrDefault() + ":" + server.getDockerOptions().getPorts().values().iterator().next());
+        server
+            .getConfiguration()
+            .setHealthcheckUrl(
+                "http://"
+                    + DOCKER_HOST.getValueOrDefault()
+                    + ":"
+                    + server.getDockerOptions().getPorts().values().iterator().next());
       }
       server.waitForServerUp();
     }

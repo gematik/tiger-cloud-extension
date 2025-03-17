@@ -92,6 +92,7 @@ class TestDockerServerTypesIT extends AbstractTigerCloudTest {
         "src/test/resources/de/gematik/test/tiger/testenvmgr/" + cfgFile + ".yaml",
         envMgr -> {
           CfgServer srv = envMgr.getConfiguration().getServers().get(cfgFile);
+          srv.setHostname("testblub");
           ReflectionTestUtils.setField(srv, prop, null);
           assertThatThrownBy(
                   () -> envMgr.createServer("blub", srv).assertThatConfigurationIsCorrect())
@@ -119,6 +120,7 @@ class TestDockerServerTypesIT extends AbstractTigerCloudTest {
     createTestEnvMgrSafelyAndExecute(
         envMgr -> {
           CfgServer srv = envMgr.getConfiguration().getServers().get(cfgFileName);
+          srv.setHostname("testblub");
           envMgr.createServer("blub", srv).assertThatConfigurationIsCorrect();
         });
   }
@@ -135,12 +137,13 @@ class TestDockerServerTypesIT extends AbstractTigerCloudTest {
 
   @Test
   void testHostnameForDockerComposeNotAllowed_NOK() {
-    TigerGlobalConfiguration.initializeWithCliProperties(
-        Map.of(
-            "TIGER_TESTENV_CFGFILE",
-            "src/test/resources/de/gematik/test/tiger/testenvmgr/testComposeWithHostname.yaml"));
-
-    assertThatThrownBy(TigerTestEnvMgr::new).isInstanceOf(TigerConfigurationException.class);
+    createTestEnvMgrSafelyAndExecute(
+        "src/test/resources/de/gematik/test/tiger/testenvmgr/testComposeWithHostname.yaml",
+        envMgr -> {
+          assertThatThrownBy(() -> envMgr.findServer("testDemis").get().start(envMgr))
+              .isInstanceOf(TigerConfigurationException.class)
+              .hasMessageContaining("Hostname property is not supported for docker compose nodes!");
+        });
   }
 
   // -----------------------------------------------------------------------------------------------------------------
@@ -156,7 +159,8 @@ class TestDockerServerTypesIT extends AbstractTigerCloudTest {
             "src/test/resources/de/gematik/test/tiger/testenvmgr/testDockerMVPNonExistingVersion.yaml"));
     createTestEnvMgrSafelyAndExecute(
         envMgr ->
-            assertThatThrownBy(envMgr::setUpEnvironment).isInstanceOf(TigerEnvironmentStartupException.class));
+            assertThatThrownBy(envMgr::setUpEnvironment)
+                .isInstanceOf(TigerEnvironmentStartupException.class));
   }
 
   @Test
@@ -276,40 +280,40 @@ class TestDockerServerTypesIT extends AbstractTigerCloudTest {
         "src/test/resources/de/gematik/test/tiger/testenvmgr/testComposeMVP.yaml");
   }
 
-    @Test
-    void testCreateDockerComposeWithoutLocalComposeAndCheckPortIsAvailable() {
-        createTestEnvMgrSafelyAndExecute(
-                envMgr -> {
-                    envMgr.setUpEnvironment();
-                    log.info(
-                            "Web server expected to serve at {}",
+  @Test
+  void testCreateDockerComposeWithoutLocalComposeAndCheckPortIsAvailable() {
+    createTestEnvMgrSafelyAndExecute(
+        envMgr -> {
+          envMgr.setUpEnvironment();
+          log.info(
+              "Web server expected to serve at {}",
+              TigerGlobalConfiguration.resolvePlaceholders(
+                  "http://" + DOCKER_HOST.getValueOrDefault() + ":${free.port.1}"));
+          try {
+            log.info(
+                "Web server responds with: "
+                    + Unirest.spawnInstance()
+                        .get(
                             TigerGlobalConfiguration.resolvePlaceholders(
-                                    "http://" + DOCKER_HOST.getValueOrDefault() + ":${free.port.1}"));
-                    try {
-                        log.info(
-                                "Web server responds with: "
-                                        + Unirest.spawnInstance()
-                                        .get(
-                                                TigerGlobalConfiguration.resolvePlaceholders(
-                                                        "http://" + DOCKER_HOST.getValueOrDefault() + ":${free.port.1}"))
-                                        .asString()
-                                        .getBody());
-                    } catch (Exception e) {
-                        log.error("Unable to retrieve document from docker compose webserver...", e);
-                    }
-                    assertThat(
-                            Unirest.spawnInstance()
-                                    .get(
-                                            TigerGlobalConfiguration.resolvePlaceholders(
-                                                    "http://" + DOCKER_HOST.getValueOrDefault() + ":${free.port.1}"))
-                                    .asString()
-                                    .getStatus())
-                            .isEqualTo(200);
-                },
-                "src/test/resources/de/gematik/test/tiger/testenvmgr/testComposeMVPWithNoLocalCompose.yaml");
-    }
+                                "http://" + DOCKER_HOST.getValueOrDefault() + ":${free.port.1}"))
+                        .asString()
+                        .getBody());
+          } catch (Exception e) {
+            log.error("Unable to retrieve document from docker compose webserver...", e);
+          }
+          assertThat(
+                  Unirest.spawnInstance()
+                      .get(
+                          TigerGlobalConfiguration.resolvePlaceholders(
+                              "http://" + DOCKER_HOST.getValueOrDefault() + ":${free.port.1}"))
+                      .asString()
+                      .getStatus())
+              .isEqualTo(200);
+        },
+        "src/test/resources/de/gematik/test/tiger/testenvmgr/testComposeMVPWithNoLocalCompose.yaml");
+  }
 
-    /** test that docker compose adds routes to tiger proxy */
+  /** test that docker compose adds routes to tiger proxy */
   @Test
   void testCreateDockerComposeAndCheckRoutesAreAddedToTigerProxy() {
     createTestEnvMgrSafelyAndExecute(
@@ -392,23 +396,26 @@ class TestDockerServerTypesIT extends AbstractTigerCloudTest {
         });
   }
 
-    @Test
-    @TigerTest(
-            cfgFilePath = "src/test/resources/de/gematik/test/tiger/testenvmgr/testDockerHttpdHealth.yaml")
-    void testDockerHealth_OK(TigerTestEnvMgr envMgr) {
-        final String cfgFileName = "testDockerHttpdHealth";
-        log.info("Starting testDockerHealth_OK for {}", cfgFileName);
-        DockerAbstractServer server = (DockerAbstractServer) envMgr.getServers().get(cfgFileName);
-        assertThat(server.getDockerOptions().getPorts())
-                .as("Checking dockers ports data")
-                .hasSize(1)
-                .containsKey(80);
-        assertThat(Unirest.get(server.getConfiguration().getHealthcheckUrl()).asString().getStatus())
-                .as("Request to httpd is working")
-                .isEqualTo(200);
-        assertThat(server.getConfiguration().getHealthcheckUrl())
-                .as("RequestURL is taken from healthcheckUrl")
-                .isEqualTo( "http://www.example.com");
-        assertThat(server.getStatus()) .as("Server Status is Running") .isEqualTo(TigerServerStatus.RUNNING);
-    }
+  @Test
+  @TigerTest(
+      cfgFilePath =
+          "src/test/resources/de/gematik/test/tiger/testenvmgr/testDockerHttpdHealth.yaml")
+  void testDockerHealth_OK(TigerTestEnvMgr envMgr) {
+    final String cfgFileName = "testDockerHttpdHealth";
+    log.info("Starting testDockerHealth_OK for {}", cfgFileName);
+    DockerAbstractServer server = (DockerAbstractServer) envMgr.getServers().get(cfgFileName);
+    assertThat(server.getDockerOptions().getPorts())
+        .as("Checking dockers ports data")
+        .hasSize(1)
+        .containsKey(80);
+    assertThat(Unirest.get(server.getConfiguration().getHealthcheckUrl()).asString().getStatus())
+        .as("Request to httpd is working")
+        .isEqualTo(200);
+    assertThat(server.getConfiguration().getHealthcheckUrl())
+        .as("RequestURL is taken from healthcheckUrl")
+        .isEqualTo("http://www.example.com");
+    assertThat(server.getStatus())
+        .as("Server Status is Running")
+        .isEqualTo(TigerServerStatus.RUNNING);
+  }
 }

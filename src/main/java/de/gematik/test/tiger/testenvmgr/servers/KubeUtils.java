@@ -74,8 +74,8 @@ public class KubeUtils {
   public KubeUtils(AbstractTigerServer server, Executor executor) {
     final String executableExtension =
         System.getProperty("os.name").startsWith("Win") ? ".exe" : "";
-    helmCommand = server.findCommandInPath("helm" + executableExtension);
-    kubeCtlCommand = server.findCommandInPath("kubectl" + executableExtension);
+    helmCommand = SystemExecutionUtils.findCommandInPath("helm" + executableExtension);
+    kubeCtlCommand = SystemExecutionUtils.findCommandInPath("kubectl" + executableExtension);
     this.tigerServer = server;
     this.executor = executor;
     this.log = tigerServer.getLog();
@@ -98,8 +98,8 @@ public class KubeUtils {
 
     Process process =
         getSafely(
-                spinUpNewExternalProcess(processBuilder),
-                "set context " + context + " for server " + tigerServer.getServerId());
+            spinUpNewExternalProcess(processBuilder),
+            "set context " + context + " for server " + tigerServer.getServerId());
 
     int exitCode = getSafely(process.onExit(), "waiting for process to terminate").exitValue();
     if (exitCode != 0) {

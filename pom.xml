@@ -21,7 +21,7 @@
 
     <groupId>de.gematik</groupId>
     <artifactId>tiger-cloud-extension</artifactId>
-    <version>10.0.18</version>
+    <version>3.7.2</version>
     <packaging>jar</packaging>
     <description>tiger-cloud-extension</description>
     <url>https://github.com/gematik/tiger-cloud-extension</url>
@@ -81,16 +81,16 @@
         <sonar.dynamicAnalysis>reuseReports</sonar.dynamicAnalysis>
         <sonar.language>java</sonar.language>
 
-        <version.jackson>2.18.2</version.jackson>
+        <version.jackson>2.18.3</version.jackson>
         <version.junit5>5.11.4</version.junit5>
-        <version.tiger.testenv>3.6.1</version.tiger.testenv>
-        <version.testcontainers>1.20.4</version.testcontainers>
-        <version.spotless-maven-plugin>2.44.2</version.spotless-maven-plugin>
+        <version.tiger.testenv>3.7.1</version.tiger.testenv>
+        <version.testcontainers>1.20.6</version.testcontainers>
+        <version.spotless-maven-plugin>2.44.3</version.spotless-maven-plugin>
         <version.spotless.google-java-format>1.18.1</version.spotless.google-java-format>
 
         <!-- work around for owasp plugin requiring yarn to perform its task https://service.gematik.de/browse/DEVOPS-1233 -->
         <yarnAuditAnalyzerEnabled>false</yarnAuditAnalyzerEnabled>
-        <version.logback>1.5.16</version.logback>
+        <version.logback>1.5.17</version.logback>
     </properties>
 
     <dependencyManagement>
@@ -123,7 +123,7 @@
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
-            <version>2.0.16</version>
+            <version>2.0.17</version>
         </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>
@@ -141,7 +141,7 @@
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-test</artifactId>
-            <version>6.2.2</version>
+            <version>6.2.3</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -200,7 +200,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.13.0</version>
+                <version>3.14.0</version>
                 <configuration>
                     <encoding>${project.build.sourceEncoding}</encoding>
                     <source>${java.version}</source>
