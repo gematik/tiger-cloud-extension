@@ -21,7 +21,7 @@
 
     <groupId>de.gematik</groupId>
     <artifactId>tiger-cloud-extension</artifactId>
-    <version>3.7.2</version>
+    <version>3.7.6</version>
     <packaging>jar</packaging>
     <description>tiger-cloud-extension</description>
     <url>https://github.com/gematik/tiger-cloud-extension</url>
@@ -38,7 +38,7 @@
     </issueManagement>
     <organization>
         <name>gematik GmbH</name>
-        <url>http://www.gematik.de</url>
+        <url>https://www.gematik.de</url>
     </organization>
 
     <licenses>
@@ -81,24 +81,23 @@
         <sonar.dynamicAnalysis>reuseReports</sonar.dynamicAnalysis>
         <sonar.language>java</sonar.language>
 
-        <version.jackson>2.18.3</version.jackson>
-        <version.junit5>5.11.4</version.junit5>
-        <version.tiger.testenv>3.7.1</version.tiger.testenv>
         <version.testcontainers>1.20.6</version.testcontainers>
+
         <version.spotless-maven-plugin>2.44.3</version.spotless-maven-plugin>
         <version.spotless.google-java-format>1.18.1</version.spotless.google-java-format>
 
         <!-- work around for owasp plugin requiring yarn to perform its task https://service.gematik.de/browse/DEVOPS-1233 -->
         <yarnAuditAnalyzerEnabled>false</yarnAuditAnalyzerEnabled>
-        <version.logback>1.5.17</version.logback>
     </properties>
 
     <dependencyManagement>
         <dependencies>
             <dependency>
-                <groupId>ch.qos.logback</groupId>
-                <artifactId>logback-classic</artifactId>
-                <version>${version.logback}</version>
+                <groupId>de.gematik.test</groupId>
+                <artifactId>tiger-bom</artifactId>
+                <version>3.7.6</version>
+                <type>pom</type>
+                <scope>import</scope>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -107,7 +106,6 @@
         <dependency>
             <groupId>de.gematik.test</groupId>
             <artifactId>tiger-testenv-mgr</artifactId>
-            <version>${version.tiger.testenv}</version>
         </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>
@@ -123,43 +121,36 @@
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
-            <version>2.0.17</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-annotations</artifactId>
         </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
-            <version>1.18.36</version>
             <scope>provided</scope>
         </dependency>
 
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-engine</artifactId>
-            <version>${version.junit5}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-test</artifactId>
-            <version>6.2.3</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-core</artifactId>
-            <version>${version.jackson}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
-            <version>${version.jackson}</version>
             <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-annotations</artifactId>
-            <version>${version.jackson}</version>
         </dependency>
         <dependency>
             <groupId>org.sonarsource.java</groupId>
@@ -174,7 +165,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
-                <version>3.5.2</version>
+                <version>3.5.3</version>
                 <executions>
                     <execution>
                         <goals>

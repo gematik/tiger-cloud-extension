@@ -23,7 +23,7 @@ import de.gematik.test.tiger.testenvmgr.junit.TigerTest;
 import de.gematik.test.tiger.testenvmgr.servers.HelmChartServer;
 import de.gematik.test.tiger.testenvmgr.servers.KubeUtils;
 import de.gematik.test.tiger.testenvmgr.util.TigerEnvironmentStartupException;
-import kong.unirest.Unirest;
+import kong.unirest.core.Unirest;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.junit.jupiter.api.Disabled;
