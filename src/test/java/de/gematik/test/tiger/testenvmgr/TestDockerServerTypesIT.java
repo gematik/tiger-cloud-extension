@@ -33,19 +33,19 @@ import de.gematik.test.tiger.testenvmgr.util.TigerEnvironmentStartupException;
 import de.gematik.test.tiger.testenvmgr.util.TigerTestEnvException;
 import java.io.File;
 import java.io.IOException;
-import java.net.SocketTimeoutException;
+import java.net.ConnectException;
+import java.net.http.HttpTimeoutException;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import kong.unirest.GetRequest;
-import kong.unirest.Unirest;
-import kong.unirest.UnirestException;
-import kong.unirest.UnirestInstance;
+import kong.unirest.core.GetRequest;
+import kong.unirest.core.Unirest;
+import kong.unirest.core.UnirestException;
+import kong.unirest.core.UnirestInstance;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.tuple.Pair;
-import org.apache.http.conn.HttpHostConnectException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -199,7 +199,7 @@ class TestDockerServerTypesIT extends AbstractTigerCloudTest {
     DockerServer server = (DockerServer) envMgr.getServers().get(cfgFileName);
     String healthcheckUrl = server.getConfiguration().getHealthcheckUrl();
     Unirest.config().reset();
-    Unirest.config().socketTimeout(1000).connectTimeout(1000);
+    Unirest.config().requestTimeout(1000).connectTimeout(1000);
 
     assertThat(Unirest.get(healthcheckUrl).asString().getStatus())
         .as("Request to httpd is working")
@@ -209,7 +209,7 @@ class TestDockerServerTypesIT extends AbstractTigerCloudTest {
     GetRequest requestAfterPause = Unirest.get(healthcheckUrl);
     assertThatThrownBy(requestAfterPause::asString)
         .isInstanceOf(UnirestException.class)
-        .hasCauseInstanceOf(SocketTimeoutException.class);
+        .hasCauseInstanceOf(HttpTimeoutException.class);
 
     DockerServer.dockerManager.unpauseContainer(server);
     assertThat(Unirest.get(healthcheckUrl).asString().getStatus())
@@ -220,7 +220,7 @@ class TestDockerServerTypesIT extends AbstractTigerCloudTest {
     GetRequest requestAfterStop = Unirest.get(healthcheckUrl);
     assertThatThrownBy(requestAfterStop::asString)
         .isInstanceOf(UnirestException.class)
-        .hasCauseInstanceOf(HttpHostConnectException.class);
+        .hasCauseInstanceOf(ConnectException.class);
   }
 
   @Test
@@ -235,7 +235,7 @@ class TestDockerServerTypesIT extends AbstractTigerCloudTest {
         TigerGlobalConfiguration.resolvePlaceholders(
             "http://" + DOCKER_HOST.getValueOrDefault() + ":${free.port.1}");
     Unirest.config().reset();
-    Unirest.config().socketTimeout(1000).connectTimeout(1000);
+    Unirest.config().requestTimeout(1000).connectTimeout(1000);
 
     assertThat(Unirest.get(baseUrl).asString().getStatus())
         .as("Request to httpd is working")
@@ -244,7 +244,7 @@ class TestDockerServerTypesIT extends AbstractTigerCloudTest {
     GetRequest requestAfterStop = Unirest.get(baseUrl);
     assertThatThrownBy(requestAfterStop::asString)
         .isInstanceOf(UnirestException.class)
-        .hasCauseInstanceOf(HttpHostConnectException.class);
+        .hasCauseInstanceOf(ConnectException.class);
   }
 
   @Test
