@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 package de.gematik.test.tiger.testenvmgr;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
