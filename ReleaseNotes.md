@@ -1,5 +1,9 @@
 # Changelog tiger-cloud-extension
 
+# Release 4.0.9
+* TCLE-34 - update tiger in pom
+* TCLE-32 - checks for CI pipeline added
+
 # Release 3.7.6
 
 ## Features

@@ -21,7 +21,7 @@
 
     <groupId>de.gematik</groupId>
     <artifactId>tiger-cloud-extension</artifactId>
-    <version>3.7.6</version>
+    <version>4.0.9</version>
     <packaging>jar</packaging>
     <description>tiger-cloud-extension</description>
     <url>https://github.com/gematik/tiger-cloud-extension</url>
@@ -82,9 +82,10 @@
         <sonar.language>java</sonar.language>
 
         <version.testcontainers>1.20.6</version.testcontainers>
-
+        <version.tiger.testenv>4.0.9</version.tiger.testenv>
         <version.spotless-maven-plugin>2.44.3</version.spotless-maven-plugin>
         <version.spotless.google-java-format>1.18.1</version.spotless.google-java-format>
+        <version.central-publishing-maven-plugin>0.7.0</version.central-publishing-maven-plugin>
 
         <!-- work around for owasp plugin requiring yarn to perform its task https://service.gematik.de/browse/DEVOPS-1233 -->
         <yarnAuditAnalyzerEnabled>false</yarnAuditAnalyzerEnabled>
@@ -95,7 +96,7 @@
             <dependency>
                 <groupId>de.gematik.test</groupId>
                 <artifactId>tiger-bom</artifactId>
-                <version>3.7.6</version>
+                <version>${version.tiger.testenv}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -327,15 +328,13 @@
                         </executions>
                     </plugin>
                     <plugin>
-                        <groupId>org.sonatype.plugins</groupId>
-                        <artifactId>nexus-staging-maven-plugin</artifactId>
-                        <version>1.7.0</version>
+                        <groupId>org.sonatype.central</groupId>
+                        <artifactId>central-publishing-maven-plugin</artifactId>
+                        <version>${version.central-publishing-maven-plugin}</version>
                         <extensions>true</extensions>
                         <configuration>
-                            <serverId>ossrh</serverId>
-                            <nexusUrl>https://oss.sonatype.org/</nexusUrl>
-                            <autoReleaseAfterClose>true</autoReleaseAfterClose>
-                            <stagingProgressTimeoutMinutes>20</stagingProgressTimeoutMinutes>
+                            <publishingServerId>central</publishingServerId>
+                            <autoPublish>true</autoPublish>
                         </configuration>
                     </plugin>
                 </plugins>
