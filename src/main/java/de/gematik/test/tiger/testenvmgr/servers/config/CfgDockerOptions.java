@@ -19,12 +19,9 @@
  * For additional notes and disclaimer from gematik and in case of changes by gematik find details in the "Readme" file.
  */
 
-
 package de.gematik.test.tiger.testenvmgr.servers.config;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.util.List;
-import java.util.Map;
 import lombok.Data;
 
 @Data
@@ -55,9 +52,14 @@ public class CfgDockerOptions {
   private String entryPoint;
 
   /** used only by docker */
-  @JsonIgnore private Map<Integer, Integer> ports = Map.of();
+  private List<String> ports = List.of();
 
   private List<CopyFilesConfig> copyFiles = List.of();
+
+  /**
+   * List of extra hosts to be added (corresponds to the 'add-host' option)
+   */
+  private List<String> extraHosts = List.of();
 
   /** configuration of files to be copied to the container* */
   @Data

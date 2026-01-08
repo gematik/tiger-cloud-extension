@@ -11,5 +11,7 @@ servers:
     environment:
       - ENV_FOR_DOCKER=1234567890
     exports:
-      - EXTERNAL_HTTP_PORT=${PORT:80}
       - EXTERNAL_HOSTNAME=${NAME}
+    dockerOptions:
+      ports:
+        - ${free.port.1}:80

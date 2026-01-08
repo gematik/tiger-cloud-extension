@@ -21,7 +21,7 @@
 
     <groupId>de.gematik</groupId>
     <artifactId>tiger-cloud-extension</artifactId>
-    <version>4.0.9</version>
+    <version>4.1.14</version>
     <packaging>jar</packaging>
     <description>tiger-cloud-extension</description>
     <url>https://github.com/gematik/tiger-cloud-extension</url>
@@ -81,11 +81,11 @@
         <sonar.dynamicAnalysis>reuseReports</sonar.dynamicAnalysis>
         <sonar.language>java</sonar.language>
 
-        <version.testcontainers>1.20.6</version.testcontainers>
-        <version.tiger.testenv>4.0.9</version.tiger.testenv>
-        <version.spotless-maven-plugin>2.44.3</version.spotless-maven-plugin>
+        <version.testcontainers>2.0.2</version.testcontainers>
+        <version.tiger.testenv>4.1.14</version.tiger.testenv>
+        <version.spotless-maven-plugin>3.0.0</version.spotless-maven-plugin>
         <version.spotless.google-java-format>1.18.1</version.spotless.google-java-format>
-        <version.central-publishing-maven-plugin>0.7.0</version.central-publishing-maven-plugin>
+        <version.central-publishing-maven-plugin>0.9.0</version.central-publishing-maven-plugin>
 
         <!-- work around for owasp plugin requiring yarn to perform its task https://service.gematik.de/browse/DEVOPS-1233 -->
         <yarnAuditAnalyzerEnabled>false</yarnAuditAnalyzerEnabled>
@@ -159,6 +159,10 @@
             <version>5.14.0.18788</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+        </dependency>
     </dependencies>
 
     <build>
@@ -166,7 +170,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
-                <version>3.5.3</version>
+                <version>3.5.4</version>
                 <executions>
                     <execution>
                         <goals>
@@ -192,7 +196,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.14.0</version>
+                <version>3.14.1</version>
                 <configuration>
                     <encoding>${project.build.sourceEncoding}</encoding>
                     <source>${java.version}</source>
@@ -216,7 +220,7 @@
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
-                <version>0.8.12</version>
+                <version>0.8.14</version>
                 <executions>
                     <execution>
                         <goals>
@@ -236,12 +240,12 @@
             <plugin>
                 <groupId>org.sonarsource.scanner.maven</groupId>
                 <artifactId>sonar-maven-plugin</artifactId>
-                <version>4.0.0.4121</version>
+                <version>5.2.0.4988</version>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
-                <version>3.11.2</version>
+                <version>3.12.0</version>
                 <configuration>
                     <doclint>none</doclint>
                 </configuration>
@@ -310,7 +314,7 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-gpg-plugin</artifactId>
-                        <version>3.2.7</version>
+                        <version>3.2.8</version>
                         <executions>
                             <execution>
                                 <id>sign-artifacts</id>

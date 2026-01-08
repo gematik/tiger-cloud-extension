@@ -19,14 +19,18 @@
  * For additional notes and disclaimer from gematik and in case of changes by gematik find details in the "Readme" file.
  */
 
-
 package de.gematik.test.tiger.testenvmgr.servers;
 
+import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.command.InspectImageResponse;
 import com.github.dockerjava.api.command.ListContainersCmd;
 import com.github.dockerjava.api.exception.DockerException;
+import com.github.dockerjava.api.exception.NotFoundException;
 import com.github.dockerjava.api.model.ContainerConfig;
 import com.github.dockerjava.api.model.ExposedPort;
+import com.github.dockerjava.api.model.PortBinding;
+import com.github.dockerjava.api.model.Ports.Binding;
+import de.gematik.test.tiger.common.config.TigerConfigurationException;
 import de.gematik.test.tiger.common.config.TigerGlobalConfiguration;
 import de.gematik.test.tiger.common.config.TigerTypedConfigurationKey;
 import de.gematik.test.tiger.common.util.TigerSerializationUtil;
@@ -42,6 +46,7 @@ import java.nio.file.Paths;
 import java.util.*;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import lombok.val;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -133,7 +138,8 @@ public class DockerMgr {
             cmd -> cmd.withUser("root").withEntrypoint(containerScriptPath));
       }
 
-      container.setLogConsumers(List.of(new Slf4jLogConsumer(log)));
+      container.setLogConsumers(
+          List.of(new Slf4jLogConsumer(log).withPrefix(server.getServerId())));
       log.info("Passing in environment for {}...", server.getServerId());
       addEnvVarsToContainer(container, server.getEnvironmentProperties());
 
@@ -146,12 +152,36 @@ public class DockerMgr {
       if (server.getDockerOptions().isOneShot()) {
         container.withStartupCheckStrategy(new OneShotStartupCheckStrategy());
       }
-
+      final PortBinding[] portBindings =
+          server.getDockerOptions().getPorts().stream()
+              .map(TigerGlobalConfiguration::resolvePlaceholders)
+              .map(str -> str.split(":"))
+              .map(
+                  split ->
+                      new PortBinding(
+                          Binding.bindPort(Integer.parseInt(split[0])),
+                          new ExposedPort(Integer.parseInt(split[1]))))
+              .toArray(PortBinding[]::new);
+      container.withCreateContainerCmdModifier(
+          cmd -> cmd.getHostConfig().withPortBindings(portBindings));
+      server
+          .getDockerOptions()
+          .getExtraHosts()
+          .forEach(
+              extraHost -> {
+                val parts = extraHost.split(":");
+                if (parts.length != 2) {
+                  throw new TigerConfigurationException(
+                      "Expected two parts seperated by ':' for  extra host, got '"
+                          + extraHost
+                          + "'");
+                }
+                container.withExtraHost(parts[0], parts[1]);
+              });
       copyFilesToContainer(container, server);
 
       container.start();
 
-      retrieveExposedPortsAndStoreInServerConfiguration(server, container);
       // make startup time and intervall and url (supporting ${PORT} and regex content configurable
       waitForHealthyStartup(server, container);
       container
@@ -168,10 +198,8 @@ public class DockerMgr {
 
   private void pullImageIfNotExists(DockerImageName imageName) {
     var dockerClient = DockerClientFactory.instance().client();
-    var images =
-        dockerClient.listImagesCmd().withImageNameFilter(imageName.asCanonicalNameString()).exec();
 
-    if (images.isEmpty()) {
+    if (!isLocalImagePresent(imageName.asCanonicalNameString(), dockerClient)) {
       try {
         log.info("Pulling docker image: image {} ...", imageName.asCanonicalNameString());
         dockerClient
@@ -187,6 +215,16 @@ public class DockerMgr {
     }
   }
 
+  private boolean isLocalImagePresent(String imageName, DockerClient dockerClient) {
+    boolean exists = true;
+    try {
+      dockerClient.inspectImageCmd(imageName).exec();
+    } catch (NotFoundException e) {
+      exists = false;
+    }
+    return exists;
+  }
+
   private void copyFilesToContainer(GenericContainer<?> container, DockerServer server) {
     for (CfgDockerOptions.CopyFilesConfig copyFilesConfig :
         server.getDockerOptions().getCopyFiles()) {
@@ -200,23 +238,6 @@ public class DockerMgr {
         mountableFile = MountableFile.forHostPath(copyFilesConfig.getSourcePath());
       }
       container.withCopyFileToContainer(mountableFile, copyFilesConfig.getDestinationPath());
-    }
-  }
-
-  private static void retrieveExposedPortsAndStoreInServerConfiguration(
-      DockerServer server, GenericContainer<?> container) {
-    try {
-      final Map<Integer, Integer> ports = new HashMap<>();
-      container.getContainerInfo().getNetworkSettings().getPorts().getBindings().entrySet().stream()
-          .filter(entry -> entry.getValue() != null)
-          .forEach(
-              entry ->
-                  ports.put(
-                      entry.getKey().getPort(),
-                      Integer.valueOf(entry.getValue()[0].getHostPortSpec())));
-      server.getDockerOptions().setPorts(ports);
-    } catch (RuntimeException rte) {
-      log.warn("Unable to retrieve port bindings! No startup healthcheck can be performed!", rte);
     }
   }
 
@@ -254,7 +275,17 @@ public class DockerMgr {
     }
     String identity = "tiger_" + Base58.randomString(6).toLowerCase();
 
-    ComposeContainer composeContainer = new ComposeContainer(identity, composeFiles);
+    ComposeContainer composeContainer;
+    // Since testcontainers version 2.0.2, the configuration of localCompose is determined by the
+    // constructer used.
+    //  new ComposeContainer(identity, composeFiles); always has localCompose set to true.
+    if (server.getDockerOptions().isWithLocalDockerCompose()) {
+      composeContainer = new ComposeContainer(identity, composeFiles);
+    } else {
+      composeContainer =
+          new ComposeContainer(DockerImageName.parse("docker"), identity, composeFiles);
+    }
+
     composeFileContents.stream()
         .filter(content -> !content.isEmpty())
         .map(content -> TigerSerializationUtil.yamlToJsonObject(content).getJSONObject("services"))
@@ -263,15 +294,8 @@ public class DockerMgr {
         .forEach(
             serviceEntry ->
                 exposeServicesAndMapExposedPorts(server, serviceEntry, composeContainer));
-    // ALERT! Jenkins only works with local docker compose!
-    // So do not change this unless you VERIFIED it also works on Jenkins builds
-    if (server.getDockerOptions().isWithLocalDockerCompose()) {
-      log.info("Starting {} with local compose...", server.getServerId());
-      composeContainer.withLocalCompose(true).start();
-    } else {
-      log.info("Starting {} without local compose...", server.getServerId());
-      composeContainer.start();
-    }
+
+    composeContainer.start();
 
     composeFileContents.stream()
         .filter(content -> !content.isEmpty())
@@ -556,7 +580,7 @@ public class DockerMgr {
                 "http://"
                     + DOCKER_HOST.getValueOrDefault()
                     + ":"
-                    + server.getDockerOptions().getPorts().values().iterator().next());
+                    + server.getDockerOptions().getPorts().get(0).split(":")[0]);
       }
       server.waitForServerUp();
     }

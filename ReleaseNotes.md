@@ -1,5 +1,42 @@
 # Changelog tiger-cloud-extension
 
+# Release 4.1.14
+
+# BREAKING CHANGE
+
+* Port-Mappings are now done explicitly. This supersedes the behavior up to now. Docker-Containers can now expose multiple ports directly to defined host ports.
+
+```yaml
+servers:
+  tigerProxyAsDocker:
+    source:
+      - gematik1/tiger-proxy-image
+    version: 4.1.1
+    type: docker
+    dockerOptions:
+      ports:
+        - "80:8080"
+        - "${free.port.1}:9090"
+```
+
+## Features
+
+* TESTHUB-1: Add server-name to log-output for docker containers.
+* TCLE-35 - upgrade to tiger 4.1.0, testcontainers 2.0.2
+* TESTHUB-1: Extra-hostnames can now be added to docker containers:
+
+```yaml
+servers:
+  tigerProxyAsDocker:
+    source:
+      - gematik1/tiger-proxy-image
+    version: 4.1.1
+    type: docker
+    dockerOptions:
+      extraHosts:
+        - blubServer:host-gateway
+```
+
 # Release 4.0.9
 * TCLE-34 - update tiger in pom
 * TCLE-32 - checks for CI pipeline added

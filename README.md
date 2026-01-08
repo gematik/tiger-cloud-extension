@@ -33,12 +33,13 @@ For more details please check the Tiger user manual at https://gematik.github.io
 The following table shows the recommended combinations of versions you should use to avoid problems using the
 tiger-cloud-extension.
 
-| tiger-cloud-extension Version | Tiger Version |
-|-------------------------------|---------------|
-| 1.10.0                        | 3.0.2         |
-| 10.0.18                       | < 3.7.6       |
-| 3.7.6                         | 3.7.6         |
-| 4.0.9                         | 4.0.9         |
+| tiger-cloud-extension Version  | Tiger Version |
+|--------------------------------|---------------|
+| 1.10.0                         | 3.0.2         |
+| 10.0.18                        | < 3.7.6       |
+| 3.7.6                          | 3.7.6         |
+| 4.0.9                          | 4.0.9         |
+| 4.1.14                         | 4.1.14        |
 
 Please note that the highest version (10.0.18) is NOT the latest version.
 
