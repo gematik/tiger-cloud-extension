@@ -25,8 +25,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
 import de.gematik.test.tiger.testenvmgr.util.TigerEnvironmentStartupException;
+import org.apache.commons.lang3.SystemUtils;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.shaded.org.apache.commons.lang3.SystemUtils;
 
 class SystemUtilsTest {
   @Test

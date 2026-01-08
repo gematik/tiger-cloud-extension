@@ -29,7 +29,9 @@ import de.gematik.test.tiger.common.config.TigerGlobalConfiguration;
 import de.gematik.test.tiger.common.data.config.tigerproxy.TigerConfigurationRoute;
 import de.gematik.test.tiger.testenvmgr.TigerTestEnvMgr;
 import de.gematik.test.tiger.testenvmgr.config.CfgServer;
+import de.gematik.test.tiger.testenvmgr.util.TigerTestEnvException;
 import lombok.Builder;
+import lombok.val;
 
 /**
  * Implementation of the Tiger test environment server type "docker". It starts a given docker image
@@ -51,6 +53,20 @@ public class DockerServer extends DockerAbstractServer {
 
     assertCfgPropertySet(getConfiguration(), "version");
     assertCfgPropertySet(getConfiguration(), "source");
+    getDockerOptions()
+        .getPorts()
+        .forEach(
+            portExportString -> {
+              String[] kvp = portExportString.split(":", 2);
+              if (kvp.length != 2) {
+                throw new TigerTestEnvException(
+                    "Docker port mapping in server '"
+                        + getServerId()
+                        + "' with value '"
+                        + portExportString
+                        + "' is invalid. Use the format '<host-port>:<container-port>'");
+              }
+            });
   }
 
   @Override
@@ -62,14 +78,16 @@ public class DockerServer extends DockerAbstractServer {
     // add routes needed for each server to local docker proxy
     // ATTENTION only one route per server!
     if (getDockerOptions().getPorts() != null && !getDockerOptions().getPorts().isEmpty()) {
+      final String targetHostPort = getDockerOptions().getPorts().get(0).split(":")[0];
+      log.info(
+          "Adding route for docker server {}: TO={}:{}",
+          getServerId(),
+          DOCKER_HOST.getValueOrDefault(),
+          targetHostPort);
       addRoute(
           TigerConfigurationRoute.builder()
               .from(HTTP + getHostname())
-              .to(
-                  HTTP
-                      + DOCKER_HOST.getValueOrDefault()
-                      + ":"
-                      + getDockerOptions().getPorts().values().iterator().next())
+              .to(HTTP + DOCKER_HOST.getValueOrDefault() + ":" + targetHostPort)
               .build());
     }
 
@@ -93,10 +111,12 @@ public class DockerServer extends DockerAbstractServer {
                   getDockerOptions()
                       .getPorts()
                       .forEach(
-                          (localPort, externPort) ->
-                              kvp[1] =
-                                  kvp[1].replace(
-                                      "${PORT:" + localPort + "}", String.valueOf(externPort)));
+                          (entry) -> {
+                            val pairs = entry.split(":");
+                            kvp[1] =
+                                kvp[1].replace(
+                                    "${PORT:" + pairs[0] + "}", String.valueOf(pairs[1]));
+                          });
                 }
                 if (!origValue.equals(kvp[1])) {
                   log.info("Setting global property {}={}", kvp[0], kvp[1]);

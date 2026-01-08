@@ -150,7 +150,7 @@ class TestHelmChartServerIT extends AbstractTigerCloudTest {
               startupTimeoutSec: 180
               source:
                 - bitnami/nginx
-              version: 16.0.3
+              version: 22.3.2
               helmChartOptions:
                 debug: true
                 podName: tiger-nginx-liveness

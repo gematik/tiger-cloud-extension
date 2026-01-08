@@ -16,5 +16,5 @@ servers:
     healthcheckUrl: http://www.example.com
     dockerOptions:
       ports:
-        - 80:80
+        - ${free.port.1}:80
 

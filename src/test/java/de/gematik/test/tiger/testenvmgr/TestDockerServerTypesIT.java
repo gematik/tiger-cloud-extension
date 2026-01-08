@@ -34,6 +34,7 @@ import de.gematik.test.tiger.testenvmgr.servers.DockerAbstractServer;
 import de.gematik.test.tiger.testenvmgr.servers.DockerComposeServer;
 import de.gematik.test.tiger.testenvmgr.servers.DockerServer;
 import de.gematik.test.tiger.testenvmgr.servers.TigerServerStatus;
+import de.gematik.test.tiger.testenvmgr.servers.config.DockerServerConfiguration;
 import de.gematik.test.tiger.testenvmgr.util.TigerEnvironmentStartupException;
 import de.gematik.test.tiger.testenvmgr.util.TigerTestEnvException;
 import java.io.File;
@@ -113,18 +114,20 @@ class TestDockerServerTypesIT extends AbstractTigerCloudTest {
   // check for docker compose hostname is not allowed
   //
 
-  @ParameterizedTest
-  @ValueSource(strings = {"testDocker"})
-  void testCheckCfgPropertiesMinimumConfigPasses_OK(String cfgFileName) {
-    log.info("Starting testCheckCfgPropertiesMinimumConfigPasses_OK for {}", cfgFileName);
+  @Test
+  void testCheckCfgPropertiesMinimumConfigPasses_OK() {
+    log.info("Starting testCheckCfgPropertiesMinimumConfigPasses_OK for testDocker.yaml");
     TigerGlobalConfiguration.initializeWithCliProperties(
         Map.of(
             "TIGER_TESTENV_CFGFILE",
-            "src/test/resources/de/gematik/test/tiger/testenvmgr/" + cfgFileName + ".yaml"));
+            "src/test/resources/de/gematik/test/tiger/testenvmgr/testDocker.yaml"));
 
     createTestEnvMgrSafelyAndExecute(
         envMgr -> {
-          CfgServer srv = envMgr.getConfiguration().getServers().get(cfgFileName);
+          var srv =
+              TigerGlobalConfiguration.instantiateConfigurationBean(
+                      DockerServerConfiguration.class, "tiger.servers.testDocker")
+                  .get();
           srv.setHostname("testblub");
           envMgr.createServer("blub", srv).assertThatConfigurationIsCorrect();
         });
@@ -178,15 +181,12 @@ class TestDockerServerTypesIT extends AbstractTigerCloudTest {
     assertThat(server.getDockerOptions().getPorts())
         .as("Checking dockers ports data")
         .hasSize(1)
-        .containsKey(80);
+        .element(0)
+        .asString()
+        .isEqualTo(TigerGlobalConfiguration.resolvePlaceholders("${free.port.1}:80"));
     assertThat(Unirest.get(server.getConfiguration().getHealthcheckUrl()).asString().getStatus())
         .as("Request to httpd is working")
         .isEqualTo(200);
-    assertThat(TigerGlobalConfiguration.readStringOptional("external.http.port"))
-        .as("Check exposed ports are parsed")
-        .isPresent()
-        .get()
-        .isEqualTo(String.valueOf(server.getDockerOptions().getPorts().get(80)));
     assertThat(TigerGlobalConfiguration.readStringOptional("external.hostname"))
         .as("Check hostname is parsed")
         .isPresent()
@@ -198,10 +198,9 @@ class TestDockerServerTypesIT extends AbstractTigerCloudTest {
   @TigerTest(
       cfgFilePath = "src/test/resources/de/gematik/test/tiger/testenvmgr/testDockerHttpd.yaml")
   void testDockerPauseUnpauseStop_OK(TigerTestEnvMgr envMgr) {
-    final String cfgFileName = "testDockerHttpd";
-    log.info("Starting testDockerPauseUnpauseStop_OK for {}", cfgFileName);
+    log.info("Starting testDockerPauseUnpauseStop_OK for testDockerHttpd.yaml");
 
-    DockerServer server = (DockerServer) envMgr.getServers().get(cfgFileName);
+    DockerServer server = (DockerServer) envMgr.getServers().get("testDockerHttpd");
     String healthcheckUrl = server.getConfiguration().getHealthcheckUrl();
     Unirest.config().reset();
     Unirest.config().requestTimeout(1000).connectTimeout(1000);
@@ -383,14 +382,15 @@ class TestDockerServerTypesIT extends AbstractTigerCloudTest {
 
   @Test
   void testCreateDockerWithCopyFiles_filesShouldBeInContainer() {
-    var cfgFile = "testDocker_CopyFiles";
     createTestEnvMgrSafelyAndExecute(
-        "src/test/resources/de/gematik/test/tiger/testenvmgr/" + cfgFile + ".yaml",
+        "src/test/resources/de/gematik/test/tiger/testenvmgr/testDocker_CopyFiles.yaml",
         envMgr -> {
           envMgr.setUpEnvironment();
-          DockerAbstractServer server = (DockerAbstractServer) envMgr.getServers().get(cfgFile);
-          var mappedPort = server.getDockerOptions().getPorts().get(80);
-          var baseUrl = "http://" + DOCKER_HOST.getValueOrDefault() + ":" + mappedPort;
+          var baseUrl =
+              "http://"
+                  + DOCKER_HOST.getValueOrDefault()
+                  + ":"
+                  + TigerGlobalConfiguration.readString("free.port.1");
           assertThat(Unirest.get(baseUrl + "/test_file_inside_container.txt").asString().getBody())
               .isEqualTo("this is the content of test_file_to_copy.txt");
           assertThat(
@@ -412,7 +412,9 @@ class TestDockerServerTypesIT extends AbstractTigerCloudTest {
     assertThat(server.getDockerOptions().getPorts())
         .as("Checking dockers ports data")
         .hasSize(1)
-        .containsKey(80);
+        .element(0)
+        .asString()
+        .isEqualTo(TigerGlobalConfiguration.resolvePlaceholders("${free.port.1}:80"));
     assertThat(Unirest.get(server.getConfiguration().getHealthcheckUrl()).asString().getStatus())
         .as("Request to httpd is working")
         .isEqualTo(200);

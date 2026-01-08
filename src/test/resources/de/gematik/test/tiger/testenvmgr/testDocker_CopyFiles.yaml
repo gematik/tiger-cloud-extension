@@ -13,3 +13,5 @@ servers:
           destinationPath: "/usr/local/apache2/htdocs/test_file_inside_container.txt"
         - sourcePath: "src/test/resources/de/gematik/test/tiger/testenvmgr/test_folder_to_copy"
           destinationPath: "/usr/local/apache2/htdocs/test_folder_inside_container_to_copy"
+      ports:
+        - ${free.port.1}:80
