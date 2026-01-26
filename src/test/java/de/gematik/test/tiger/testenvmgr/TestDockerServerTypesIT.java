@@ -402,6 +402,18 @@ class TestDockerServerTypesIT extends AbstractTigerCloudTest {
   }
 
   @Test
+  void testCreateDockerWithCopyNonExistingFiles_expectExceptionAtStartup() {
+    createTestEnvMgrSafelyAndExecute(
+        "src/test/resources/de/gematik/test/tiger/testenvmgr/testDocker_CopyNonExistingFiles.yaml",
+        envMgr ->
+            assertThatThrownBy(envMgr::setUpEnvironment)
+                .hasMessageContaining("Error during startup of server testDocker_CopyFiles")
+                .rootCause()
+                .hasMessageContaining("File to copy to docker container does not exist:")
+                .hasMessageContaining("some/non/existing/file.txt"));
+  }
+
+  @Test
   @TigerTest(
       cfgFilePath =
           "src/test/resources/de/gematik/test/tiger/testenvmgr/testDockerHttpdHealth.yaml")

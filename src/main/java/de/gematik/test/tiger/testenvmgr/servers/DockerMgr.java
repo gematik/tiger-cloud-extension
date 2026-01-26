@@ -55,6 +55,7 @@ import org.json.JSONObject;
 import org.testcontainers.DockerClientFactory;
 import org.testcontainers.containers.ComposeContainer;
 import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.Network;
 import org.testcontainers.containers.output.Slf4jLogConsumer;
 import org.testcontainers.containers.startupcheck.OneShotStartupCheckStrategy;
 import org.testcontainers.images.TigerDelegatePullImageResultCallback;
@@ -164,6 +165,9 @@ public class DockerMgr {
               .toArray(PortBinding[]::new);
       container.withCreateContainerCmdModifier(
           cmd -> cmd.getHostConfig().withPortBindings(portBindings));
+
+      setupNetwork(server, container);
+
       server
           .getDockerOptions()
           .getExtraHosts()
@@ -193,6 +197,36 @@ public class DockerMgr {
     } catch (final DockerException de) {
       throw new TigerTestEnvException(
           "Failed to start container for server " + server.getServerId(), de);
+    }
+  }
+
+  private static void setupNetwork(DockerServer server, GenericContainer container) {
+    // set network
+    if (server.getDockerOptions().getNetworkMode() != null) {
+      switch (server.getDockerOptions().getNetworkMode()) {
+        case BRIDGE, NONE:
+          container.withNetworkMode("bridge");
+          break;
+        case HOST:
+          container.withNetworkMode("host");
+          break;
+        case CONTAINER:
+          container.withNetworkMode("container:" + server.getDockerOptions().getNetworkName());
+          break;
+        case CUSTOM:
+          container.withNetworkMode("custom");
+          container.withNetwork(
+              new Network() {
+                @Override
+                public String getId() {
+                  return server.getDockerOptions().getNetworkName();
+                }
+
+                @Override
+                public void close() {}
+              });
+          break;
+      }
     }
   }
 
@@ -237,7 +271,15 @@ public class DockerMgr {
       } else {
         mountableFile = MountableFile.forHostPath(copyFilesConfig.getSourcePath());
       }
+      assertThatFileExists(mountableFile);
       container.withCopyFileToContainer(mountableFile, copyFilesConfig.getDestinationPath());
+    }
+  }
+
+  private void assertThatFileExists(MountableFile mountableFile) {
+    if (!Path.of(mountableFile.getResolvedPath()).toFile().exists()) {
+      throw new TigerTestEnvException(
+          "File to copy to docker container does not exist: " + mountableFile.getResolvedPath());
     }
   }
 

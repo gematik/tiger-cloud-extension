@@ -1,5 +1,21 @@
 # Changelog tiger-cloud-extension
 
+# Release 4.1.15
+
+# BREAKING CHANGE
+
+* TGR-2012: dockerOptions.proxied is now by default false. If you want to proxy the docker container via tiger-proxy, you have to set it to true explicitly.
+
+## Features
+
+* TGR-2012: dockerOptions.networkMode: Allows to set the network mode of the docker container. This can be any of bridge, host, none, container or custom.
+You can now also set networkName to either the container to be attached to (if mode is container) or the name of a custom network (if mode is custom). This second setting is especially useful when using docker compose networks.
+
+
+## Bugfixes
+
+* TGR-2012: Error-Message when starting docker container with non-existing files (copyFiles).
+
 # Release 4.1.14
 
 # BREAKING CHANGE

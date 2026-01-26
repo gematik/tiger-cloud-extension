@@ -1,0 +1,15 @@
+localProxyActive: false
+
+servers:
+  testDocker_CopyFiles:
+    hostname: testDocker1
+    type: docker
+    source:
+      - docker.io/httpd
+    version: 2.4.49-alpine
+    dockerOptions:
+      copyFiles:
+        - sourcePath: "some/non/existing/file.txt"
+          destinationPath: "/usr/local/apache2/htdocs/test_file_inside_container.txt"
+      ports:
+        - ${free.port.1}:80

@@ -43,7 +43,7 @@ public class DockerServer extends DockerAbstractServer {
   public static final DockerMgr dockerManager = new DockerMgr();
 
   @Builder
-  public DockerServer(TigerTestEnvMgr tigerTestEnvMgr, String serverId, CfgServer configuration) {
+  public DockerServer(String serverId, CfgServer configuration, TigerTestEnvMgr tigerTestEnvMgr) {
     super(serverId, configuration, tigerTestEnvMgr);
   }
 

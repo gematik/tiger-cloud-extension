@@ -64,7 +64,7 @@ public class HelmChartServer extends AbstractExternalTigerServer {
   private final KubeUtils kubeUtils;
 
   public HelmChartServer(
-      TigerTestEnvMgr tigerTestEnvMgr, String serverId, CfgServer configuration) {
+      String serverId, CfgServer configuration, TigerTestEnvMgr tigerTestEnvMgr) {
     super(serverId, configuration, tigerTestEnvMgr);
     this.kubeUtils = new KubeUtils(this, tigerTestEnvMgr.getExecutor());
   }
