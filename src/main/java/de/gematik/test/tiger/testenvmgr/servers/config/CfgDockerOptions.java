@@ -30,7 +30,7 @@ public class CfgDockerOptions {
    * whether to start container with unmodified entrypoint, or whether to modify by adding pki and
    * other stuff, rewriting the entrypoint
    */
-  private boolean proxied = true;
+  private boolean proxied = false;
 
   /** for docker type to trigger OneShotStartupStrategy */
   private boolean oneShot = false;
@@ -60,6 +60,9 @@ public class CfgDockerOptions {
    * List of extra hosts to be added (corresponds to the 'add-host' option)
    */
   private List<String> extraHosts = List.of();
+
+  private DockerNetworkMode networkMode;
+  private String networkName;
 
   /** configuration of files to be copied to the container* */
   @Data
