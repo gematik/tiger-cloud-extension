@@ -24,16 +24,16 @@ package de.gematik.test.tiger.testenvmgr;
 import static de.gematik.test.tiger.testenvmgr.servers.DockerMgr.DOCKER_HOST;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.awaitility.Awaitility.await;
 
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import de.gematik.test.tiger.common.config.TigerConfigurationException;
 import de.gematik.test.tiger.common.config.TigerGlobalConfiguration;
 import de.gematik.test.tiger.proxy.data.TigerProxyRoute;
 import de.gematik.test.tiger.testenvmgr.config.CfgServer;
 import de.gematik.test.tiger.testenvmgr.junit.TigerTest;
-import de.gematik.test.tiger.testenvmgr.servers.DockerAbstractServer;
-import de.gematik.test.tiger.testenvmgr.servers.DockerComposeServer;
-import de.gematik.test.tiger.testenvmgr.servers.DockerServer;
-import de.gematik.test.tiger.testenvmgr.servers.TigerServerStatus;
+import de.gematik.test.tiger.testenvmgr.servers.*;
 import de.gematik.test.tiger.testenvmgr.servers.config.DockerServerConfiguration;
 import de.gematik.test.tiger.testenvmgr.util.TigerEnvironmentStartupException;
 import de.gematik.test.tiger.testenvmgr.util.TigerTestEnvException;
@@ -43,20 +43,21 @@ import java.net.ConnectException;
 import java.net.http.HttpTimeoutException;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-import kong.unirest.core.GetRequest;
-import kong.unirest.core.Unirest;
-import kong.unirest.core.UnirestException;
-import kong.unirest.core.UnirestInstance;
+import kong.unirest.core.*;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import lombok.val;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.slf4j.LoggerFactory;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.testcontainers.DockerClientFactory;
 
@@ -75,7 +76,7 @@ import org.testcontainers.DockerClientFactory;
 class TestDockerServerTypesIT extends AbstractTigerCloudTest {
 
   @BeforeEach
-  public void listContainers() {
+  void listContainers() {
     log.info(
         "Active Docker containers: \n{}",
         DockerClientFactory.instance().client().listContainersCmd().exec().stream()
@@ -131,6 +132,32 @@ class TestDockerServerTypesIT extends AbstractTigerCloudTest {
           srv.setHostname("testblub");
           envMgr.createServer("blub", srv).assertThatConfigurationIsCorrect();
         });
+  }
+
+  @TigerTest(
+      tigerYaml =
+          """
+        localProxyActive: false
+        servers:
+          testDocker:
+            hostname: testDocker1
+            type: docker
+            version: 4.1.15
+            source:
+              - gematik1/tiger-proxy-image
+            dockerOptions:
+              ports:
+                - "${free.port.55}:8080"
+      """)
+  @Test
+  @Disabled
+  void testTigerProxy() {
+    val response =
+        Unirest.get(
+                TigerGlobalConfiguration.resolvePlaceholders(
+                    "http://localhost:${free.port.55}/actuator/health"))
+            .asString();
+    assertThat(response.getStatus()).isEqualTo(200);
   }
 
   @ParameterizedTest
@@ -249,6 +276,54 @@ class TestDockerServerTypesIT extends AbstractTigerCloudTest {
     assertThatThrownBy(requestAfterStop::asString)
         .isInstanceOf(UnirestException.class)
         .hasCauseInstanceOf(ConnectException.class);
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  @TigerTest(
+      tigerYaml =
+          """
+          localProxyActive: false
+          servers:
+            testDocker:
+              hostname: testDocker1
+              type: docker
+              source:
+                - gematik1/tiger-test-image
+              version: 1.1.0
+              startupTimeoutSec: 1
+              dockerOptions:
+                logContainerOutput: ${logging.enabled}
+          """,
+      skipEnvironmentSetup = true)
+  void checkContainerLogging(boolean loggingEnabled, TigerTestEnvMgr envMgr) {
+    TigerGlobalConfiguration.putValue("logging.enabled", loggingEnabled);
+    val loggerUnderTest = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(DockerMgr.class);
+
+    val listAppender = new ListAppender<ILoggingEvent>();
+    listAppender.start();
+    loggerUnderTest.addAppender(listAppender);
+
+    try {
+      envMgr.setUpEnvironment();
+
+      await()
+          .atMost(10, TimeUnit.SECONDS)
+          .untilAsserted(
+              () -> {
+                if (loggingEnabled) {
+                  assertThat(listAppender.list)
+                      .extracting(ILoggingEvent::getFormattedMessage)
+                      .anyMatch(msg -> msg.contains("[testDocker] STDOUT: HELLO18"));
+                } else {
+                  assertThat(listAppender.list)
+                      .extracting(ILoggingEvent::getFormattedMessage)
+                      .noneMatch(msg -> msg.contains("[testDocker] STDOUT: HELLO18"));
+                }
+              });
+    } finally {
+      loggerUnderTest.detachAppender(listAppender);
+    }
   }
 
   @Test
