@@ -1,5 +1,15 @@
 # Changelog tiger-cloud-extension
 
+# Release 4.1.17
+
+## Features
+
+* TGR-2039: Log-Output of docker containers can now be switched off.
+
+## Bugfixes
+
+* TGR-2039: Fixed clashing port-mappings when starting docker containers with exposed ports.
+
 # Release 4.1.15
 
 # BREAKING CHANGE

@@ -58,6 +58,7 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.output.Slf4jLogConsumer;
 import org.testcontainers.containers.startupcheck.OneShotStartupCheckStrategy;
+import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.images.TigerDelegatePullImageResultCallback;
 import org.testcontainers.utility.Base58;
 import org.testcontainers.utility.DockerImageName;
@@ -99,7 +100,6 @@ public class DockerMgr {
     pullImageIfNotExists(testContainersImageName);
     final var container = new GenericContainer<>(testContainersImageName); // NOSONAR
     try {
-
       InspectImageResponse iiResponse =
           container.getDockerClient().inspectImageCmd(imageName).exec();
       final ContainerConfig containerConfig = iiResponse.getConfig();
@@ -108,48 +108,17 @@ public class DockerMgr {
             "Docker image '" + imageName + "' has no configuration info!");
       }
       if (server.getDockerOptions().isProxied()) {
-        String[] startCmd = containerConfig.getCmd();
-        String[] entryPointCmd = containerConfig.getEntrypoint();
-        if (StringUtils.isNotEmpty(server.getDockerOptions().getEntryPoint())) {
-          entryPointCmd = new String[] {server.getDockerOptions().getEntryPoint()};
-        }
-        // erezept hardcoded
-        if (entryPointCmd != null
-            && entryPointCmd[0].equals("/bin/sh")
-            && entryPointCmd[1].equals("-c")) {
-          entryPointCmd =
-              new String[] {"su", containerConfig.getUser(), "-c", "'" + entryPointCmd[2] + "'"};
-        }
-        File tmpScriptFolder = Path.of(TARGET_FOLDER, TIGER_TESTENV_MGR_FOLDER).toFile();
-        if (!tmpScriptFolder.exists() && !tmpScriptFolder.mkdirs()) {
-          throw new TigerTestEnvException(
-              "Unable to create temp folder for modified startup script for server "
-                  + server.getServerId());
-        }
-        final String scriptName =
-            createContainerStartupScript(server, iiResponse, startCmd, entryPointCmd);
-        String containerScriptPath = containerConfig.getWorkingDir() + UNIX_PATH_CHAR + scriptName;
-        container.withExtraHost("host.docker.internal", "host-gateway");
-
-        container.withCopyFileToContainer(
-            MountableFile.forHostPath(
-                Path.of(tmpScriptFolder.getAbsolutePath(), scriptName), MOD_ALL_EXEC),
-            containerScriptPath);
-        container.withCreateContainerCmdModifier(
-            cmd -> cmd.withUser("root").withEntrypoint(containerScriptPath));
+        addLocalTigerProxyToTruststore(server, containerConfig, iiResponse, container);
       }
 
-      container.setLogConsumers(
-          List.of(new Slf4jLogConsumer(log).withPrefix(server.getServerId())));
+      if (server.getDockerOptions().isLogContainerOutput()) {
+        log.info("Enabling container output logging for {}...", server.getServerId());
+        container.setLogConsumers(
+            List.of(new Slf4jLogConsumer(log).withPrefix(server.getServerId())));
+      }
       log.info("Passing in environment for {}...", server.getServerId());
       addEnvVarsToContainer(container, server.getEnvironmentProperties());
 
-      if (containerConfig.getExposedPorts() != null) {
-        List<Integer> ports =
-            Arrays.stream(containerConfig.getExposedPorts()).map(ExposedPort::getPort).toList();
-        log.info("Exposing ports for {}: {}", server.getServerId(), ports);
-        container.setExposedPorts(ports);
-      }
       if (server.getDockerOptions().isOneShot()) {
         container.withStartupCheckStrategy(new OneShotStartupCheckStrategy());
       }
@@ -198,6 +167,39 @@ public class DockerMgr {
       throw new TigerTestEnvException(
           "Failed to start container for server " + server.getServerId(), de);
     }
+  }
+
+  private void addLocalTigerProxyToTruststore(DockerServer server, ContainerConfig containerConfig, InspectImageResponse iiResponse,
+    GenericContainer<?> container) {
+    String[] startCmd = containerConfig.getCmd();
+    String[] entryPointCmd = containerConfig.getEntrypoint();
+    if (StringUtils.isNotEmpty(server.getDockerOptions().getEntryPoint())) {
+      entryPointCmd = new String[] {server.getDockerOptions().getEntryPoint()};
+    }
+    // erezept hardcoded
+    if (entryPointCmd != null
+        && entryPointCmd[0].equals("/bin/sh")
+        && entryPointCmd[1].equals("-c")) {
+      entryPointCmd =
+          new String[] {"su", containerConfig.getUser(), "-c", "'" + entryPointCmd[2] + "'"};
+    }
+    File tmpScriptFolder = Path.of(TARGET_FOLDER, TIGER_TESTENV_MGR_FOLDER).toFile();
+    if (!tmpScriptFolder.exists() && !tmpScriptFolder.mkdirs()) {
+      throw new TigerTestEnvException(
+        "Unable to create temp folder for modified startup script for server "
+        + server.getServerId());
+    }
+    final String scriptName =
+        createContainerStartupScript(server, iiResponse, startCmd, entryPointCmd);
+    String containerScriptPath = containerConfig.getWorkingDir() + UNIX_PATH_CHAR + scriptName;
+    container.withExtraHost("host.docker.internal", "host-gateway");
+
+    container.withCopyFileToContainer(
+        MountableFile.forHostPath(
+            Path.of(tmpScriptFolder.getAbsolutePath(), scriptName), MOD_ALL_EXEC),
+        containerScriptPath);
+    container.withCreateContainerCmdModifier(
+        cmd -> cmd.withUser("root").withEntrypoint(containerScriptPath));
   }
 
   private static void setupNetwork(DockerServer server, GenericContainer container) {
@@ -364,6 +366,7 @@ public class DockerMgr {
                 log.debug("Inspecting docker container: {}", cmd.exec().toString());
               });
     }
+
     composeContainer.withLogConsumer(serviceEntry.getKey(), new Slf4jLogConsumer(log));
   }
 
@@ -503,7 +506,7 @@ public class DockerMgr {
       var content = "#!/bin/sh -x\nenv\n";
 
       if (server.getTigerTestEnvMgr().getLocalTigerProxyOptional().isPresent()) {
-        content = addCertitifcatesToOsTruststoreOfDockerContainer(server, content);
+        content = addCertificatesToOsTruststoreOfDockerContainer(server, content);
       }
 
       // testing ca cert of proxy with openssl
@@ -534,7 +537,7 @@ public class DockerMgr {
   }
 
   @NotNull
-  private String addCertitifcatesToOsTruststoreOfDockerContainer(
+  private String addCertificatesToOsTruststoreOfDockerContainer(
       AbstractTigerServer server, String content) throws IOException {
     final var lecert =
         IOUtils.toString(
