@@ -1,0 +1,14 @@
+servers:
+  docker:
+    type: docker
+    source:
+      - kennethreitz/httpbin
+    version: latest
+    dockerOptions:
+      ports:
+        - "8082:80"
+    #dependsUpon: compose
+  compose:
+    type: compose
+    source:
+      - src/test/resources/de/gematik/test/tiger/testenvmgr/docker-compose.yaml

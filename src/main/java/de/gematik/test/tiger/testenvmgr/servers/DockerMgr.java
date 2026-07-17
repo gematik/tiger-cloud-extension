@@ -58,7 +58,6 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.output.Slf4jLogConsumer;
 import org.testcontainers.containers.startupcheck.OneShotStartupCheckStrategy;
-import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.images.TigerDelegatePullImageResultCallback;
 import org.testcontainers.utility.Base58;
 import org.testcontainers.utility.DockerImageName;
@@ -91,6 +90,9 @@ public class DockerMgr {
 
   /** stores a reference for each server id to the related docker compose container running. */
   private final Map<String, ComposeContainer> composeContainers = new HashMap<>();
+
+  //Docker Client is initialized here, to avoid possible deadlocks later.
+  private final DockerClient dockerClient = DockerClientFactory.instance().client();
 
   @SuppressWarnings("unused")
   public void startContainer(final DockerServer server) {
@@ -233,7 +235,6 @@ public class DockerMgr {
   }
 
   private void pullImageIfNotExists(DockerImageName imageName) {
-    var dockerClient = DockerClientFactory.instance().client();
 
     if (!isLocalImagePresent(imageName.asCanonicalNameString(), dockerClient)) {
       try {
@@ -350,7 +351,7 @@ public class DockerMgr {
     composeContainers.put(server.getServerId(), composeContainer);
   }
 
-  private static void logExposedPortsOfComposition(
+  private void logExposedPortsOfComposition(
       Map.Entry<String, Object> serviceEntry, ComposeContainer composeContainer) {
     var map = ((Map<String, ?>) serviceEntry.getValue());
     if (map.containsKey(DOCKER_COMPOSE_PROP_EXPOSE)) {
@@ -362,7 +363,7 @@ public class DockerMgr {
                     serviceEntry.getKey(),
                     port,
                     composeContainer.getServicePort(serviceEntry.getKey(), port));
-                ListContainersCmd cmd = DockerClientFactory.instance().client().listContainersCmd();
+                ListContainersCmd cmd = dockerClient.listContainersCmd();
                 log.debug("Inspecting docker container: {}", cmd.exec().toString());
               });
     }

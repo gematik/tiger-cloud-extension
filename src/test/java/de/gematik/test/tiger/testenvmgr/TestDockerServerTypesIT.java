@@ -485,7 +485,7 @@ class TestDockerServerTypesIT extends AbstractTigerCloudTest {
                 .hasMessageContaining("Error during startup of server testDocker_CopyFiles")
                 .rootCause()
                 .hasMessageContaining("File to copy to docker container does not exist:")
-                .hasMessageContaining("some/non/existing/file.txt"));
+                .hasMessageContaining("some" + File.separator + "non" + File.separator + "existing" + File.separator + "file.txt"));
   }
 
   @Test

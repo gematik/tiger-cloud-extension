@@ -1,5 +1,9 @@
 # Changelog tiger-cloud-extension
 
+# Release 4.1.18
+
+* TCLE-37: Fixed a deadlock condition happening when a testsuite starts multiple docker or compose servers in parallel.
+
 # Release 4.1.17
 
 ## Features
