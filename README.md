@@ -26,67 +26,25 @@ module.
     </dependency>
 ```
 
-For more details please check the Tiger user manual at https://gematik.github.io/app-Tiger/Tiger-User-Manual.html
+## Documentation
 
-## Compatibility
+The complete, detailed documentation of this extension - including the full configuration reference and examples
+for all supported server types (`docker`, `compose`, `helmChart`) - is maintained in the user manual in
+[`doc/user_manual`](doc/user_manual/user_manual.adoc):
 
-The following table shows the recommended combinations of versions you should use to avoid problems using the
-tiger-cloud-extension.
+* [Overview](doc/user_manual/01_overview.adoc) - what the extension does, architecture, common server properties
+* [Getting started](doc/user_manual/02_getting_started.adoc) - dependency setup, compatibility matrix, docker image
+  requirements, breaking changes
+* [Server type `docker`](doc/user_manual/03_docker_server.adoc) - single docker containers, `dockerOptions`
+  reference, port mapping, copying files, network modes, extra hosts
+* [Server type `compose`](doc/user_manual/04_compose_server.adoc) - docker compose based servers
+* [Server type `helmChart`](doc/user_manual/05_helm_chart_server.adoc) - helm charts on local/remote kubernetes
+  clusters
+* [Local test environment](doc/user_manual/06_local_test_environment.adoc) - setting up microk8s, required CLI
+  tools
 
-| tiger-cloud-extension Version  | Tiger Version |
-|--------------------------------|---------------|
-| 1.10.0                         | 3.0.2         |
-| 10.0.18                        | < 3.7.6       |
-| 3.7.6                          | 3.7.6         |
-| 4.0.9                          | 4.0.9         |
-| 4.1.14                         | 4.1.14        |
-
-Please note that the highest version (10.0.18) is NOT the latest version.
-
-## Local Testenvironment
-
-You will need microk8s configured correctly to run local tests:
-
-* kubectl create namespace tiger
-* microk8s config > ~/.kube/config
-* microk8s start
-* things that might help
-  * gcloud auth login
-  * helm repo update
-
-## Docker Image Requirements
-
-When starting a container with the tiger cloud extension, tiger makes some modifications on the entry point script to
-add the Tiger Proxy certificate to the container's operating system list of trusted certificates. In order for this to
-work, the image of the container must have the following tools available:
-
-* `/bin/sh`- sh shell
-* `/bin/env` - env command
-
-## Server Types
-
-### Docker
-
-The server type 'docker' allows to copy files into the container. This is done via the tiger configuration. A full
-example can be found in
-the [Tiger User Manual](https://gematik.github.io/app-Tiger/Tiger-User-Manual.html#_docker_container_node).
-
-```yaml
-dockerServerExample:
-  type: docker
-
-  dockerOptions:
-    copyFiles:
-      # path to the file or the folder to copy inside the container
-      - sourcePath: ./example/path/file_to_copy.txt
-        # path inside the container where the file should be copied to
-        destinationPath: /path/in/container/file_to_copy.txt
-        # OPTIONAL the file mode of the copied file as octal representation (see https://en.wikipedia.org/wiki/File-system_permissions#numericNotation
-        fileMode: 0633
-      # a complete folder can also be copied instead of a single file
-      - sourcePath: ./example/copy_folder
-        destinationPath: /path/in/container/copy_folder
-```
+For general Tiger concepts not specific to this extension, please also check the Tiger user manual at
+https://gematik.github.io/app-Tiger/Tiger-User-Manual.html
 
 ## License
 

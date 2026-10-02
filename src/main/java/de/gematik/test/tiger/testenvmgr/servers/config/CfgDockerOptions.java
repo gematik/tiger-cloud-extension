@@ -61,6 +61,8 @@ public class CfgDockerOptions {
    */
   private List<String> extraHosts = List.of();
 
+  private boolean injectDns = true;
+
   /** whether to log the container output to the tiger logs */
   private boolean logContainerOutput = true;
   private DockerNetworkMode networkMode;

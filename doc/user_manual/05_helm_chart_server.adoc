@@ -1,0 +1,137 @@
+== Server type `helmChart`
+
+The server type `helmChart` installs (`helm upgrade --install`) a helm chart onto a local or remote
+kubernetes cluster and waits until the relevant pods are running. It drives the locally installed
+`helm` and `kubectl` executables directly as OS processes - make sure both are available on your
+`PATH`.
+
+`source` is the helm chart (a local path to a chart directory, or a chart reference resolvable by
+helm, e.g. from a helm repository); `version` is the chart version.
+
+=== Minimal example
+
+[source,yaml]
+----
+servers:
+  testHelmChart:
+    type: helmChart
+    startupTimeoutSec: 80
+    source:
+      - ./hello-world
+    version: 1.0.0
+    helmChartOptions:
+      nameSpace: tiger
+      podName: test-helm-chart-test
+      workingDir: 'src/test/resources/helmCharts'
+----
+
+NOTE: The `hostname` property must *not* be set for `helmChart` servers - use `podName` inside
+`helmChartOptions` instead.
+
+=== Configuration reference (`helmChartOptions`)
+
+[cols="1,1,3"]
+|===
+| Property | Default | Description
+
+| `podName`
+| *required*
+| Name (or regex) of the pod(s)/release used to identify the deployment. Used as the helm release
+  name and to look up pod status via `kubectl get pods`.
+
+| `nameSpace`
+| `default`
+| Kubernetes namespace the chart is installed into (`helm --namespace`, `kubectl --namespace`).
+
+| `context`
+| current kubectl context
+| Kubernetes context to switch to (`kubectl config use-context <context>`) before running any helm/
+  kubectl commands. Leave unset to use whatever context is currently active.
+
+| `workingDir`
+| current working directory
+| Directory the `helm`/`kubectl` commands are executed from. Relevant for resolving relative chart
+  paths given in `source`.
+
+| `values`
+| `[]`
+| List of `key=value` pairs passed to helm as `--set key=value`, one option per list entry.
+
+| `logPods`
+| `[]`
+| List of pod names (or regexes) whose logs (`kubectl logs -f`) should be streamed into the Tiger
+  logs.
+
+| `healthcheckPods`
+| defaults to `[<podName>.*]`
+| List of pod names (or regexes) that must reach `Running` and ready state for the server to be
+  considered started. Defaults to a wildcard match on `podName` if not set.
+
+| `exposedPorts`
+| `[]`
+| List of port forwarding rules, see <<_exposing_ports>>.
+
+| `debug`
+| `false`
+| Adds `--debug` to the helm command and logs additional pod status transitions.
+|===
+
+The `source` property must contain *exactly one* entry for `helmChart` servers.
+
+=== Exposing ports
+
+`exposedPorts` forwards ports of a kubernetes service to your local machine via
+`kubectl port-forward`, so your tests can reach the pod through `localhost`. Each entry has the
+format:
+
+----
+<POD_NAME_OR_REGEX>,<LOCAL_PORT>:<FORWARDING_PORT>[,<LOCAL_PORT>:<FORWARDING_PORT>...]
+----
+
+[source,yaml]
+----
+servers:
+  testHelmChartNginx:
+    type: helmChart
+    startupTimeoutSec: 50
+    source:
+      - bitnami/nginx
+    version: 22.3.2
+    helmChartOptions:
+      nameSpace: tiger
+      podName: test-tiger-nginx
+      logPods:
+        - test-tiger-nginx.*
+      exposedPorts:
+        - test-tiger-nginx.*,8080:80
+----
+
+=== Passing values to the chart
+
+[source,yaml]
+----
+servers:
+  testHelmChart:
+    type: helmChart
+    source:
+      - ./hello-world
+    helmChartOptions:
+      nameSpace: tiger
+      podName: test-helm-chart-test
+      values:
+        - "service.type=ClusterIP"
+        - "replicaCount=1"
+----
+
+=== Shutdown behavior
+
+On shutdown, the server uninstalls the helm release (`helm uninstall`) and waits until all
+`healthcheckPods` have disappeared. If no pods matching the release are found at all, the uninstall
+command is skipped with a warning. If `healthcheckPods` is empty, shutdown is assumed to have
+succeeded immediately after issuing the uninstall command.
+
+=== Left-over deployments
+
+Before starting, the server checks whether pods matching `healthcheckPods` are already present in the
+namespace (e.g. left over from a previous, aborted run). If so, it first uninstalls the existing
+release before installing the new one.

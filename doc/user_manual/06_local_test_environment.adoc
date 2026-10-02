@@ -1,0 +1,41 @@
+== Local test environment
+
+To run the `helmChart` server type (or any other kubernetes based tests) locally, you need a working
+kubernetes cluster and a matching `~/.kube/config`. A common way to get this locally is
+https://microk8s.io/[microk8s]:
+
+[source,shell]
+----
+kubectl create namespace tiger
+microk8s config > ~/.kube/config
+microk8s start
+----
+
+Things that might additionally help, depending on your setup:
+
+[source,shell]
+----
+gcloud auth login
+helm repo update
+----
+
+=== Prerequisites summary
+
+[cols="1,3"]
+|===
+| Tool | Needed for
+
+| `docker`
+| server types `docker` and `compose`
+
+| `docker-compose` / `docker compose`
+| server type `compose` with `dockerOptions.withLocalDockerCompose: true` (default)
+
+| `kubectl`
+| server type `helmChart`
+
+| `helm`
+| server type `helmChart`
+|===
+
+Make sure all required tools are available on the `PATH` of the process running your tests.

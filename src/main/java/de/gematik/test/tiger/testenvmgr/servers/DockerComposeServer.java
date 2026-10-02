@@ -65,7 +65,7 @@ public class DockerComposeServer extends DockerAbstractServer {
   @Override
   public void performStartup() {
     statusMessage("Starting docker compose for " + getServerId() + " from " + getDockerSource());
-    DockerServer.dockerManager.startComposition(this);
+    DockerServer.getDockerManager().startComposition(this);
 
     addRoutesToTigerProxy();
     statusMessage("Docker compose " + getServerId() + " started");
@@ -113,7 +113,9 @@ public class DockerComposeServer extends DockerAbstractServer {
   @Override
   public void shutdown() {
     log.info("Stopping docker compose {}...", getServerId());
-    DockerServer.dockerManager.stopComposeContainer(this);
+    if (DockerServer.isDockerManagerInitialized()) {
+      DockerServer.getDockerManager().stopComposeContainer(this);
+    }
     setStatus(TigerServerStatus.STOPPED, "Docker compose " + getServerId() + " stopped");
   }
 }

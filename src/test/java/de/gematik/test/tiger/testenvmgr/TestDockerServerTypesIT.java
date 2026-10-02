@@ -142,7 +142,7 @@ class TestDockerServerTypesIT extends AbstractTigerCloudTest {
           testDocker:
             hostname: testDocker1
             type: docker
-            version: 4.1.15
+            version: latest
             source:
               - gematik1/tiger-proxy-image
             dockerOptions:
@@ -236,18 +236,18 @@ class TestDockerServerTypesIT extends AbstractTigerCloudTest {
         .as("Request to httpd is working")
         .isEqualTo(200);
 
-    DockerServer.dockerManager.pauseContainer(server);
+    DockerServer.getDockerManager().pauseContainer(server);
     GetRequest requestAfterPause = Unirest.get(healthcheckUrl);
     assertThatThrownBy(requestAfterPause::asString)
         .isInstanceOf(UnirestException.class)
         .hasCauseInstanceOf(HttpTimeoutException.class);
 
-    DockerServer.dockerManager.unpauseContainer(server);
+    DockerServer.getDockerManager().unpauseContainer(server);
     assertThat(Unirest.get(healthcheckUrl).asString().getStatus())
         .as("Request to httpd after resuming is working")
         .isEqualTo(200);
 
-    DockerServer.dockerManager.stopContainer(server);
+    DockerServer.getDockerManager().stopContainer(server);
     GetRequest requestAfterStop = Unirest.get(healthcheckUrl);
     assertThatThrownBy(requestAfterStop::asString)
         .isInstanceOf(UnirestException.class)

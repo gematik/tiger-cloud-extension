@@ -21,7 +21,7 @@
 
     <groupId>de.gematik</groupId>
     <artifactId>tiger-cloud-extension</artifactId>
-    <version>4.4.2</version>
+    <version>4.4.4</version>
     <packaging>jar</packaging>
     <description>tiger-cloud-extension</description>
     <url>https://github.com/gematik/tiger-cloud-extension</url>
@@ -82,8 +82,8 @@
         <sonar.language>java</sonar.language>
 
         <version.testcontainers>2.0.5</version.testcontainers>
-        <version.tiger.testenv>4.4.0</version.tiger.testenv>
-        <version.spotless-maven-plugin>3.8.0</version.spotless-maven-plugin>
+        <version.tiger.testenv>4.4.4</version.tiger.testenv>
+        <version.spotless-maven-plugin>3.9.0</version.spotless-maven-plugin>
         <version.spotless.google-java-format>1.18.1</version.spotless.google-java-format>
         <version.central-publishing-maven-plugin>0.11.0</version.central-publishing-maven-plugin>
 
@@ -112,6 +112,10 @@
         <dependency>
             <groupId>de.gematik.test</groupId>
             <artifactId>tiger-testenv-mgr</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>de.gematik.test</groupId>
+            <artifactId>tiger-canopy-extension</artifactId>
         </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>
@@ -151,6 +155,11 @@
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 

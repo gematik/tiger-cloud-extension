@@ -137,6 +137,11 @@ public class DockerMgr {
       container.withCreateContainerCmdModifier(
           cmd -> cmd.getHostConfig().withPortBindings(portBindings));
 
+      if (!server.getInjectedDnsServers().isEmpty()) {
+        container.withCreateContainerCmdModifier(
+            cmd -> cmd.getHostConfig().withDns(server.getInjectedDnsServers()));
+      }
+
       setupNetwork(server, container);
 
       server

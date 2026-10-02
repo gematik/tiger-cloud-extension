@@ -1,0 +1,81 @@
+== Getting Started
+
+=== Adding the dependency
+
+To include this extension in your project add:
+
+[source,xml]
+----
+<dependency>
+    <groupId>de.gematik</groupId>
+    <artifactId>tiger-cloud-extension</artifactId>
+    <version>...</version>
+</dependency>
+----
+
+To use this extension in your project you additionally need to depend on the Tiger testenv manager or
+the Tiger test lib module:
+
+[source,xml]
+----
+<dependency>
+    <groupId>de.gematik.test</groupId>
+    <artifactId>tiger-testenv-lib</artifactId>
+    <version>${tiger.testenv.version}</version>
+</dependency>
+----
+
+For more details about the general Tiger test environment setup please check the
+https://gematik.github.io/app-Tiger/Tiger-User-Manual.html[Tiger User Manual].
+
+=== Compatibility
+
+The following table shows the recommended combinations of versions you should use to avoid problems
+using the tiger-cloud-extension.
+
+[cols="1,1"]
+|===
+| tiger-cloud-extension Version | Tiger Version
+
+| 1.10.0
+| 3.0.2
+
+| 10.0.18
+| < 3.7.6
+
+| 3.7.6
+| 3.7.6
+
+| 4.0.9
+| 4.0.9
+
+| 4.1.14
+| 4.1.14
+
+| 4.4.3
+| 4.4.3
+|===
+
+NOTE: The highest version listed (10.0.18) is NOT the latest version - it belongs to an older
+release line.
+
+=== Docker image requirements
+
+When starting a container with the tiger cloud extension, and the server is configured with
+`dockerOptions.proxied: true`, Tiger modifies the entry point script of the container to add the
+Tiger Proxy certificate to the container's operating system list of trusted certificates. For this to
+work, the image of the container must provide the following tools:
+
+* `/bin/sh` - a shell
+* `/bin/env` - the env command
+
+=== Breaking changes to be aware of
+
+* Since version *4.1.15* `dockerOptions.proxied` defaults to `false`. If you want the docker container
+  to be proxied via the Tiger Proxy (certificate injection, see above), you have to set it to `true`
+  explicitly.
+* Since version *4.1.14* port mappings for the `docker` server type must be configured explicitly via
+  `dockerOptions.ports` (see chapter "Server type `docker`" -> "Port mapping"). The previous
+  automatic single-port mapping behavior has been removed.
+
+See `ReleaseNotes.md` for the full history of features and breaking changes.
