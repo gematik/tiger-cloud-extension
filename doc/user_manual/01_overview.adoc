@@ -1,0 +1,32 @@
+== Overview
+
+The tiger-cloud-extension allows you to embed the following resources as servers in your Tiger test
+environment:
+
+* docker image based containers (server type `docker`)
+* docker compose scripts (server type `compose`, with some constraints)
+* helm charts on a local or remote kubernetes cluster (server type `helmChart`)
+
+It is closely coupled to the https://java.testcontainers.org/[testcontainers] library and uses its
+docker feature set. For docker compose, testcontainers explicitly uses
+https://java.testcontainers.org/modules/docker_compose/[Compose V2]. Keep this in mind when using
+docker compose, as testcontainers does not support the newest compose file format features.
+
+=== Architecture
+
+For helm charts, the extension does not talk to the kubernetes API directly. Instead, it drives the
+locally installed `kubectl` and `helm` command line tools as external OS processes, using whatever
+kubernetes context is currently configured (local cluster, e.g. via microk8s, or a remote cluster).
+
+The diagram source (PlantUML) can be found in `doc/architecture.puml` and shows how the
+`HelmChartServer` uses `KubeUtils` to drive `kubectl`/`helm`, which in turn talk to either a local
+kubernetes cluster (docker desktop, microk8s) or a remote cluster, depending on the active kubernetes
+context.
+
+=== Common server properties
+
+All server types described here are implementations of a Tiger "external server" and therefore support
+the common server properties documented in the
+https://gematik.github.io/app-Tiger/Tiger-User-Manual.html[Tiger User Manual] (e.g. `hostname`,
+`source`, `version`, `startupTimeoutSec`, `environment`, `exports`, `healthcheckUrl`, ...). This manual
+only describes the properties that are specific to the tiger-cloud-extension.

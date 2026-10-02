@@ -1,0 +1,226 @@
+[[servertype_docker]]
+== Server type `docker`
+
+The server type `docker` starts a single docker container from a given image, using the
+https://java.testcontainers.org/[testcontainers] library under the hood.
+
+`source` is the docker image name (e.g. `gematik1/tiger-test-image`), `version` is the image tag
+(e.g. `1.1.0`).
+
+=== Minimal example
+
+[source,yaml]
+----
+servers:
+  testDocker:
+    type: docker
+    hostname: testDocker1
+    source:
+      - gematik1/tiger-test-image
+    version: 1.1.0
+    startupTimeoutSec: 20
+----
+
+=== Configuration reference (`dockerOptions`)
+
+All docker specific settings are grouped below the `dockerOptions` key.
+
+[cols="1,1,3"]
+|===
+| Property | Default | Description
+
+| `proxied`
+| `false`
+| Whether the container's entrypoint is rewritten so that the Tiger Proxy certificate is added to the
+  container's trusted certificate store. Set to `true` if the application inside the container needs to
+  trust the Tiger Proxy TLS certificate (e.g. because it calls out through the proxy). Requires
+  `/bin/sh` and `/bin/env` to be present in the image (see chapter "Getting Started" -> "Docker image
+  requirements").
+
+| `oneShot`
+| `false`
+| If `true`, the container is started using testcontainers' `OneShotStartupCheckStrategy`, i.e. the
+  container is expected to run once and exit, instead of running as a long-lived service.
+
+| `entryPoint`
+| unset
+| Overwrites the entrypoint configured in the image. Mostly relevant together with `proxied: true`.
+
+| `ports`
+| `[]`
+| Explicit port mappings in the form `"<host-port>:<container-port>"`. Each entry maps one container
+  port to a host port. This is the only supported way to expose container ports; use Tiger's
+  `${free.port.N}` placeholders to let Tiger pick a free host port for you.
+
+| `extraHosts`
+| `[]`
+| Additional `/etc/hosts` entries to add to the container, in the form `"<hostname>:<ip-or-gateway>"`.
+  Corresponds to docker's `--add-host` option. Useful e.g. to let the container resolve
+  `host.docker.internal`.
+
+| `copyFiles`
+| `[]`
+| List of files or folders to copy into the container before it is started. See
+  <<_copying_files_into_the_container>>.
+
+| `logContainerOutput`
+| `true`
+| Whether the container's stdout/stderr is forwarded to the Tiger logs.
+
+| `networkMode`
+| unset
+| The docker network mode to use. One of `bridge`, `host`, `none`, `container` or `custom` (see
+  <<_network_modes>>).
+
+| `networkName`
+| unset
+| Name of the container to attach to (if `networkMode: container`) or name of the custom network to
+  join (if `networkMode: custom`). Especially useful in combination with docker compose networks.
+
+| `resolveComposeFiles`
+| `true`
+| Only relevant for server type `compose` (see xref:04_compose_server.adoc[]).
+
+| `withLocalDockerCompose`
+| `true`
+| Only relevant for server type `compose` (see xref:04_compose_server.adoc[]).
+|===
+
+=== Port mapping
+
+Since port mappings must be configured explicitly, a docker server that needs to expose ports must
+list them under `dockerOptions.ports`:
+
+[source,yaml]
+----
+servers:
+  tigerProxyAsDocker:
+    type: docker
+    source:
+      - gematik1/tiger-proxy-image
+    version: 4.1.1
+    dockerOptions:
+      ports:
+        - "80:8080"
+        - "${free.port.1}:9090"
+----
+
+Each entry has the format `"<host-port>:<container-port>"`. Use the Tiger placeholder
+`${free.port.N}` to have Tiger pick an unused host port automatically; you can then reference the
+resolved port elsewhere in your configuration, e.g. in `exports`.
+
+IMPORTANT: `dockerOptions.ports` must be specified directly inside the configuration of the
+individual `docker` server node, not globally or on a different level. Since automatic port
+mapping was removed, Tiger no
+longer infers which ports to expose - each `docker` server has to declare its own required port
+mappings explicitly.
+
+[#_copying_files_into_the_container]
+=== Copying files into the container
+
+Files or whole folders can be copied into the container before startup:
+
+[source,yaml]
+----
+servers:
+  testDocker_CopyFiles:
+    type: docker
+    hostname: testDocker1
+    source:
+      - docker.io/httpd
+    version: 2.4.49-alpine
+    dockerOptions:
+      copyFiles:
+        # copy a single file
+        - sourcePath: "./example/path/file_to_copy.txt"
+          destinationPath: "/path/in/container/file_to_copy.txt"
+          # OPTIONAL: octal file mode of the copied file,
+          # see https://en.wikipedia.org/wiki/File-system_permissions#numericNotation
+          fileMode: 0633
+        # a complete folder can also be copied instead of a single file
+        - sourcePath: "./example/copy_folder"
+          destinationPath: "/path/in/container/copy_folder"
+      ports:
+        - "${free.port.1}:80"
+----
+
+=== Network modes
+
+`dockerOptions.networkMode` controls how the container is attached to the network:
+
+[cols="1,3"]
+|===
+| Value | Effect
+
+| `bridge`
+| The container uses docker's default bridge network.
+
+| `host`
+| The container shares the host's network namespace.
+
+| `none`
+| Currently mapped to the same behavior as `bridge`.
+
+| `container`
+| The container joins the network namespace of another, already running container. Set
+  `networkName` to the name (or id) of that container.
+
+| `custom`
+| The container joins an existing, named docker network. Set `networkName` to the name of that
+  network. This is especially useful to attach a `docker` server to a network created by a
+  `compose` server.
+|===
+
+[source,yaml]
+----
+servers:
+  myDockerServer:
+    type: docker
+    source:
+      - myrepo/myimage
+    version: 1.0.0
+    dockerOptions:
+      networkMode: custom
+      networkName: my-compose-network
+----
+
+=== Extra hosts
+
+[source,yaml]
+----
+servers:
+  tigerProxyAsDocker:
+    type: docker
+    source:
+      - gematik1/tiger-proxy-image
+    version: 4.1.1
+    dockerOptions:
+      extraHosts:
+        - blubServer:host-gateway
+----
+
+=== Environment variables and exports
+
+Environment variables passed via the common `environment` property are forwarded to the container.
+Values exported via the common `exports` property support the placeholder `${PORT:<host-port>}`,
+which is replaced with the container port that host port is mapped to (only for `docker` servers with
+`dockerOptions.ports` configured):
+
+[source,yaml]
+----
+servers:
+  testDockerHttpd:
+    type: docker
+    hostname: testDockerHttpd
+    source:
+      - docker.io/httpd
+    version: 2.4.49-alpine
+    startupTimeoutSec: 20
+    environment:
+      - ENV_FOR_DOCKER=1234567890
+    exports:
+      - EXTERNAL_HOSTNAME=${NAME}
+    dockerOptions:
+      ports:
+        - "${free.port.1}:80"
+----

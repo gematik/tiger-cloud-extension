@@ -1,0 +1,109 @@
+== Server type `compose`
+
+The server type `compose` starts a set of docker compose files, using testcontainers'
+`ComposeContainer` support internally (with some constraints - testcontainers does not support the
+newest compose file format features).
+
+`source` is a list of docker compose file path(s) (or `classpath:` references); `version` is not
+used.
+
+=== Minimal example
+
+`tiger.yaml`:
+
+[source,yaml]
+----
+servers:
+  testComposeMVP:
+    type: compose
+    startupTimeoutSec: 20
+    source:
+      - ./docker-compose.yaml
+    dockerOptions:
+      resolveComposeFiles: true
+----
+
+`docker-compose.yaml`:
+
+[source,yaml]
+----
+version: '2'
+services:
+  webserver:
+    image: docker.io/httpd:alpine
+    expose: [80]
+    ports:
+      - "${free.port.1}:80"
+----
+
+NOTE: The `hostname` property is *not* supported for `compose` servers - a compose file can start
+multiple services, so there is no single hostname to assign.
+
+=== Configuration reference (`dockerOptions`)
+
+`compose` servers share the `dockerOptions` structure with `docker` servers (see
+xref:03_docker_server.adoc#servertype_docker[Server type `docker`]), but only the following properties are relevant:
+
+[cols="1,1,3"]
+|===
+| Property | Default | Description
+
+| `resolveComposeFiles`
+| `true`
+| Whether to parse the compose file(s) and resolve Tiger placeholders (e.g. `${free.port.1}`) inside
+  them before handing them to docker compose. +
+  *Attention:* if your compose files live in a hierarchical folder tree, they will be flattened when
+  resolved, and mounts/volumes using relative paths may fail to work.
+
+| `withLocalDockerCompose`
+| `true`
+| Whether to start the composition using an installed local `docker-compose`/`docker compose`
+  executable (`true`), or to let testcontainers manage the composition internally (`false`).
+
+| `logContainerOutput`
+| `true`
+| Whether to log the container output to the Tiger logs.
+|===
+
+=== Routing
+
+For every port mapped in the compose file(s), the `compose` server automatically adds a route to the
+Tiger Proxy, in the format:
+
+----
+http://<serverId>-<composeServiceName>-<exposedDockerPortNumber> -> http://<dockerHost>:<hostPortNumber>
+----
+
+This lets your tests address a service by its logical name/port instead of the (dynamically assigned)
+host port.
+
+=== Multiple sources / multiple compose files
+
+The `source` property accepts a list, so multiple compose files can be combined for a single server:
+
+[source,yaml]
+----
+servers:
+  testDockerComposeMultipleServers:
+    type: compose
+    startupTimeoutSec: 20
+    source:
+      - ./docker-compose.yaml
+      - ./docker-compose-extra.yaml
+----
+
+=== Loading compose files from the classpath
+
+Compose files can also be loaded from the classpath, which is convenient when they are shipped inside
+a jar dependency:
+
+[source,yaml]
+----
+servers:
+  testDemis:
+    type: compose
+    hostname: testDemis
+    source:
+      - classpath:/de/gematik/test/tiger/testenvmgr/demis/demis_localhost.yml
+    startupTimeoutSec: 180
+----

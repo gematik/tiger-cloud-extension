@@ -39,6 +39,10 @@ public abstract class DockerAbstractServer extends AbstractExternalTigerServer {
   }
 
   public CfgDockerOptions getDockerOptions() {
-    return ((DockerServerConfiguration) getConfiguration()).getDockerOptions();
+    if (getConfiguration() instanceof DockerServerConfiguration dockerServerConfiguration) {
+      return dockerServerConfiguration.getDockerOptions();
+    }
+    CfgDockerOptions options = readTypeSpecificConfig("dockerOptions", CfgDockerOptions.class);
+    return options != null ? options : new CfgDockerOptions();
   }
 }

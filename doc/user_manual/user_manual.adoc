@@ -1,0 +1,23 @@
+= Tiger Cloud Extension - User Manual
+gematik GmbH
+:toc: left
+:toclevels: 3
+:sectnums:
+:source-highlighter: highlight.js
+
+This is the user manual of the *tiger-cloud-extension*. It complements the
+https://gematik.github.io/app-Tiger/Tiger-User-Manual.html[Tiger User Manual] with everything that is
+specific to this extension: how to embed docker containers, docker compose scripts and helm charts
+into your Tiger test environment.
+
+include::01_overview.adoc[leveloffset=+1]
+
+include::02_getting_started.adoc[leveloffset=+1]
+
+include::03_docker_server.adoc[leveloffset=+1]
+
+include::04_compose_server.adoc[leveloffset=+1]
+
+include::05_helm_chart_server.adoc[leveloffset=+1]
+
+include::06_local_test_environment.adoc[leveloffset=+1]
